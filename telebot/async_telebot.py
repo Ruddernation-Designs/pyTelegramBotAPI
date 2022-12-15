@@ -5,6 +5,7 @@ import logging
 import re
 import traceback
 from typing import Any, Awaitable, Callable, List, Optional, Union
+import sys
 
 # this imports are used to avoid circular import error
 import telebot.util
@@ -13,16 +14,15 @@ import telebot.types
 
 # storages
 from telebot.asyncio_storage import StateMemoryStorage, StatePickleStorage, StateStorageBase
-from telebot.asyncio_handler_backends import BaseMiddleware, CancelUpdate, SkipHandler, State
+from telebot.asyncio_handler_backends import BaseMiddleware, CancelUpdate, SkipHandler, State, ContinueHandling
 
 from inspect import signature
-
-from telebot import logger
 
 from telebot import util, types, asyncio_helper
 import asyncio
 from telebot import asyncio_filters
 
+logger = logging.getLogger('TeleBot')
 
 REPLY_MARKUP_TYPES = Union[
     types.InlineKeyboardMarkup, types.ReplyKeyboardMarkup, 
@@ -82,6 +82,10 @@ class AsyncTeleBot:
     See more examples in examples/ directory:
     https://github.com/eternnoir/pyTelegramBotAPI/tree/master/examples
 
+    .. note::
+
+        Install coloredlogs module to specify colorful_logs=True
+
 
     :param token: Token of a bot, obtained from @BotFather
     :type token: :obj:`str`
@@ -109,6 +113,9 @@ class AsyncTeleBot:
 
     :param allow_sending_without_reply: Default value for allow_sending_without_reply, defaults to None
     :type allow_sending_without_reply: :obj:`bool`, optional
+    
+    :param colorful_logs: Outputs colorful logs
+    :type colorful_logs: :obj:`bool`, optional
 
     """
 
@@ -118,12 +125,23 @@ class AsyncTeleBot:
                 disable_web_page_preview: Optional[bool]=None,
                 disable_notification: Optional[bool]=None,
                 protect_content: Optional[bool]=None,
-                allow_sending_without_reply: Optional[bool]=None) -> None:
+                allow_sending_without_reply: Optional[bool]=None,
+                colorful_logs: Optional[bool]=False) -> None:
         
         # update-related
         self.token = token
         self.offset = offset
 
+        # logs-related
+        if colorful_logs:
+            try:
+                import coloredlogs
+                coloredlogs.install(logger=logger, level=logger.level)
+            except ImportError:
+                raise ImportError(
+                    'Install colorredlogs module to use colorful_logs option.'
+                )
+                
         # properties
         self.parse_mode = parse_mode
         self.disable_web_page_preview = disable_web_page_preview
@@ -154,6 +172,12 @@ class AsyncTeleBot:
         self.custom_filters = {}
         self.state_handlers = []
         self.middlewares = []
+
+        self._user = None # set during polling
+
+    @property
+    def user(self):
+        return self._user
 
     async def close_session(self):
         """
@@ -194,9 +218,28 @@ class AsyncTeleBot:
         json_updates = await asyncio_helper.get_updates(self.token, offset, limit, timeout, allowed_updates, request_timeout)
         return [types.Update.de_json(ju) for ju in json_updates]
 
+    def _setup_change_detector(self, path_to_watch: str) -> None:
+        try:
+            from watchdog.observers import Observer
+            from telebot.ext.reloader import EventHandler
+        except ImportError:
+            raise ImportError(
+                'Please install watchdog and psutil before using restart_on_change option.'
+            )
+
+        self.event_handler = EventHandler()
+        path = path_to_watch if path_to_watch else None
+        if path is None:
+            # Make it possible to specify --path argument to the script
+            path = sys.argv[sys.argv.index('--path') + 1] if '--path' in sys.argv else '.'
+            
+        self.event_observer = Observer()
+        self.event_observer.schedule(self.event_handler, path, recursive=True)
+        self.event_observer.start()
+
     async def polling(self, non_stop: bool=False, skip_pending=False, interval: int=0, timeout: int=20,
             request_timeout: Optional[int]=None, allowed_updates: Optional[List[str]]=None,
-            none_stop: Optional[bool]=None):
+            none_stop: Optional[bool]=None, restart_on_change: Optional[bool]=False, path_to_watch: Optional[str]=None):
         """
         Runs bot in long-polling mode in a main loop.
         This allows the bot to retrieve Updates automagically and notify listeners and message handlers accordingly.
@@ -209,6 +252,10 @@ class AsyncTeleBot:
 
             Set non_stop=True if you want your bot to continue receiving updates
             if there is an error.
+
+        .. note::
+
+            Install watchdog and psutil before using restart_on_change option.
 
         :param non_stop: Do not stop polling when an ApiException occurs.
         :type non_stop: :obj:`bool`
@@ -237,6 +284,12 @@ class AsyncTeleBot:
 
         :param none_stop: Deprecated, use non_stop. Old typo, kept for backward compatibility.
         :type none_stop: :obj:`bool`
+
+        :param restart_on_change: Restart a file on file(s) change. Defaults to False.
+        :type restart_on_change: :obj:`bool`
+
+        :param path_to_watch: Path to watch for changes. Defaults to current directory
+        :type path_to_watch: :obj:`str`
         
         :return:
         """
@@ -246,12 +299,20 @@ class AsyncTeleBot:
 
         if skip_pending:
             await self.skip_updates()
+
+        if restart_on_change:
+            self._setup_change_detector(path_to_watch)
+
         await self._process_polling(non_stop, interval, timeout, request_timeout, allowed_updates)
 
     async def infinity_polling(self, timeout: Optional[int]=20, skip_pending: Optional[bool]=False, request_timeout: Optional[int]=None,
-            logger_level: Optional[int]=logging.ERROR, allowed_updates: Optional[List[str]]=None, *args, **kwargs):
+            logger_level: Optional[int]=logging.ERROR, allowed_updates: Optional[List[str]]=None,
+            restart_on_change: Optional[bool]=False, path_to_watch: Optional[str]=None, *args, **kwargs):
         """
         Wrap polling with infinite loop and exception handling to avoid bot stops polling.
+
+        .. note::
+            Install watchdog and psutil before using restart_on_change option.
 
         :param timeout: Timeout in seconds for get_updates(Defaults to None)
         :type timeout: :obj:`int`
@@ -276,14 +337,24 @@ class AsyncTeleBot:
             so unwanted updates may be received for a short period of time.
         :type allowed_updates: :obj:`list` of :obj:`str`
 
+        :param restart_on_change: Restart a file on file(s) change. Defaults to False
+        :type restart_on_change: :obj:`bool`
+
+        :param path_to_watch: Path to watch for changes. Defaults to current directory
+        :type path_to_watch: :obj:`str`
+
         :return: None
         """
         if skip_pending:
             await self.skip_updates()
         self._polling = True
+
+        if restart_on_change:
+            self._setup_change_detector(path_to_watch)
+
         while self._polling:
             try:
-                await self._process_polling(non_stop=False, timeout=timeout, request_timeout=request_timeout,
+                await self._process_polling(non_stop=True, timeout=timeout, request_timeout=request_timeout,
                              allowed_updates=allowed_updates, *args, **kwargs)
             except Exception as e:
                 if logger_level and logger_level >= logging.ERROR:
@@ -314,9 +385,19 @@ class AsyncTeleBot:
 
             Please note that this parameter doesn't affect updates created before the call to the get_updates,
             so unwanted updates may be received for a short period of time.
+
         :return:
 
         """
+
+        if not non_stop:
+            # show warning
+            logger.warning("Setting non_stop to False will stop polling on API and system exceptions.")
+
+        self._user = await self.get_me()
+            
+        logger.info('Starting your bot with username: [@%s]', self.user.username)
+
         self._polling = True
 
         try:
@@ -340,20 +421,34 @@ class AsyncTeleBot:
                         continue
                     else:
                         return
-                except asyncio_helper.ApiTelegramException as e:
-                    logger.error(str(e))
-                    if non_stop:
+                except asyncio_helper.ApiException as e:
+                    handled = False
+                    if self.exception_handler:
+                        self.exception_handler.handle(e)
+                        handled = True
+
+                    if not handled:
+                        logger.error('Unhandled exception (full traceback for debug level): %s', str(e))
+                        logger.debug(traceback.format_exc())
+
+                    if non_stop or handled:
                         continue
                     else:
                         break
                 except Exception as e:
-                    logger.error('Cause exception while getting updates.')
-                    if non_stop:
-                        logger.error(str(e))
-                        await asyncio.sleep(3)
+                    handled = False
+                    if self.exception_handler:
+                        self.exception_handler.handle(e)
+                        handled = True
+
+                    if not handled:
+                        logger.error('Unhandled exception (full traceback for debug level): %s', str(e))
+                        logger.debug(traceback.format_exc())
+
+                    if non_stop or handled:
                         continue
                     else:
-                        raise e
+                        break
         finally:
             self._polling = False
             await self.close_session()
@@ -391,7 +486,6 @@ class AsyncTeleBot:
         handler_error = None
         data = {}
         skip_handlers = False
-        params = []
 
         if middlewares:
             for middleware in middlewares:
@@ -412,20 +506,19 @@ class AsyncTeleBot:
         if handlers and not(skip_handlers):
             try:
                 for handler in handlers:
+                    params = []
                     process_update = await self._test_message_handler(handler, message)
                     if not process_update: continue
                     for i in signature(handler['function']).parameters:
                         params.append(i)
+                    result = None
                     if len(params) == 1:
-                        await handler['function'](message)
-                        break
+                        result = await handler['function'](message)
                     elif "data" in params:
                         if len(params) == 2:
-                            await handler['function'](message, data)
-                            break
+                            result = await handler['function'](message, data)
                         elif len(params) == 3:
-                            await handler['function'](message, data=data, bot=self)
-                            break
+                            result = await handler['function'](message, data=data, bot=self)
                         else:
                             logger.error("It is not allowed to pass data and values inside data to the handler. Check your handler: {}".format(handler['function']))
                             return
@@ -440,7 +533,8 @@ class AsyncTeleBot:
                         if len(data_copy) > len(params) - 1: # remove the message parameter
                             logger.error("You are passing more data than the handler needs. Check your handler: {}".format(handler['function']))
                             return
-                        await handler["function"](message, **data_copy)
+                        result = await handler["function"](message, **data_copy)
+                    if not isinstance(result, ContinueHandling):
                         break
             except Exception as e:
                 if self.exception_handler:
@@ -2260,7 +2354,8 @@ class AsyncTeleBot:
             reply_to_message_id: Optional[int]=None, 
             allow_sending_without_reply: Optional[bool]=None,
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
-            timeout: Optional[int]=None) -> types.Message:
+            timeout: Optional[int]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send text messages.
 
@@ -2304,6 +2399,9 @@ class AsyncTeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
+        :param message_thread_id: Unique identifier for the target message thread (topic) of the forum; for forum supergroups only
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2317,13 +2415,14 @@ class AsyncTeleBot:
             await asyncio_helper.send_message(
                 self.token, chat_id, text, disable_web_page_preview, reply_to_message_id,
                 reply_markup, parse_mode, disable_notification, timeout,
-                entities, allow_sending_without_reply, protect_content))
+                entities, allow_sending_without_reply, protect_content, message_thread_id))
 
     async def forward_message(
             self, chat_id: Union[int, str], from_chat_id: Union[int, str], 
             message_id: int, disable_notification: Optional[bool]=None,
             protect_content: Optional[bool]=None,
-            timeout: Optional[int]=None) -> types.Message:
+            timeout: Optional[int]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to forward messages of any kind.
 
@@ -2347,6 +2446,9 @@ class AsyncTeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
+        :param message_thread_id: Unique identifier for the target message thread (topic) of the forum; for forum supergroups only
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2354,7 +2456,8 @@ class AsyncTeleBot:
         protect_content = self.protect_content if (protect_content is None) else protect_content
 
         return types.Message.de_json(
-            await asyncio_helper.forward_message(self.token, chat_id, from_chat_id, message_id, disable_notification, timeout, protect_content))
+            await asyncio_helper.forward_message(self.token, chat_id, from_chat_id, message_id, disable_notification, timeout, protect_content,
+                                                 message_thread_id))
 
     async def copy_message(
             self, chat_id: Union[int, str], 
@@ -2368,7 +2471,8 @@ class AsyncTeleBot:
             reply_to_message_id: Optional[int]=None, 
             allow_sending_without_reply: Optional[bool]=None,
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
-            timeout: Optional[int]=None) -> types.MessageID:
+            timeout: Optional[int]=None,
+            message_thread_id: Optional[int]=None) -> types.MessageID:
         """
         Use this method to copy messages of any kind.
 
@@ -2410,6 +2514,9 @@ class AsyncTeleBot:
 
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
+
+        :param message_thread_id: Identifier of a message thread, in which the message will be sent
+        :type message_thread_id: :obj:`int`
         
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
@@ -2422,7 +2529,7 @@ class AsyncTeleBot:
         return types.MessageID.de_json(
             await asyncio_helper.copy_message(self.token, chat_id, from_chat_id, message_id, caption, parse_mode, caption_entities,
                                    disable_notification, reply_to_message_id, allow_sending_without_reply, reply_markup,
-                                   timeout, protect_content))
+                                   timeout, protect_content, message_thread_id))
 
     async def delete_message(self, chat_id: Union[int, str], message_id: int, 
             timeout: Optional[int]=None) -> bool:
@@ -2460,7 +2567,8 @@ class AsyncTeleBot:
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             timeout: Optional[int]=None,
             allow_sending_without_reply: Optional[bool]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send an animated emoji that will display a random value. On success, the sent Message is returned.
 
@@ -2493,6 +2601,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: The identifier of a message thread, unique within the chat to which the message with the thread identifier belongs
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2503,7 +2614,7 @@ class AsyncTeleBot:
         return types.Message.de_json(
             await asyncio_helper.send_dice(
                 self.token, chat_id, emoji, disable_notification, reply_to_message_id,
-                reply_markup, timeout, allow_sending_without_reply, protect_content)
+                reply_markup, timeout, allow_sending_without_reply, protect_content, message_thread_id)
         )
 
     async def send_photo(
@@ -2515,7 +2626,8 @@ class AsyncTeleBot:
             reply_to_message_id: Optional[int]=None, 
             allow_sending_without_reply: Optional[bool]=None,
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
-            timeout: Optional[int]=None,) -> types.Message:
+            timeout: Optional[int]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send photos. On success, the sent Message is returned.
 
@@ -2557,6 +2669,9 @@ class AsyncTeleBot:
 
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
+
+        :param message_thread_id: Identifier of a message thread, in which the message will be sent
+        :type message_thread_id: :obj:`int`
         
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
@@ -2570,7 +2685,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_photo(
                 self.token, chat_id, photo, caption, reply_to_message_id, reply_markup,
                 parse_mode, disable_notification, timeout, caption_entities,
-                allow_sending_without_reply, protect_content))
+                allow_sending_without_reply, protect_content, message_thread_id))
 
     async def send_audio(
             self, chat_id: Union[int, str], audio: Union[Any, str], 
@@ -2584,7 +2699,8 @@ class AsyncTeleBot:
             thumb: Optional[Union[Any, str]]=None,
             caption_entities: Optional[List[types.MessageEntity]]=None,
             allow_sending_without_reply: Optional[bool]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send audio files, if you want Telegram clients to display them in the music player.
         Your audio must be in the .MP3 or .M4A format. On success, the sent Message is returned. Bots can currently send audio files of up to 50 MB in size,
@@ -2645,6 +2761,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: Identifier of a message thread, in which the message will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2657,7 +2776,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_audio(
                 self.token, chat_id, audio, caption, duration, performer, title, reply_to_message_id,
                 reply_markup, parse_mode, disable_notification, timeout, thumb,
-                caption_entities, allow_sending_without_reply, protect_content))
+                caption_entities, allow_sending_without_reply, protect_content, message_thread_id))
 
     async def send_voice(
             self, chat_id: Union[int, str], voice: Union[Any, str], 
@@ -2669,7 +2788,8 @@ class AsyncTeleBot:
             timeout: Optional[int]=None,
             caption_entities: Optional[List[types.MessageEntity]]=None,
             allow_sending_without_reply: Optional[bool]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send audio files, if you want Telegram clients to display the file as a playable voice message.
         For this to work, your audio must be in an .OGG file encoded with OPUS (other formats may be sent as Audio or Document).
@@ -2716,6 +2836,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: Identifier of a message thread, in which the message will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         """
         parse_mode = self.parse_mode if (parse_mode is None) else parse_mode
@@ -2727,7 +2850,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_voice(
                 self.token, chat_id, voice, caption, duration, reply_to_message_id, reply_markup,
                 parse_mode, disable_notification, timeout, caption_entities,
-                allow_sending_without_reply, protect_content))
+                allow_sending_without_reply, protect_content, message_thread_id))
 
     async def send_document(
             self, chat_id: Union[int, str], document: Union[Any, str],
@@ -2743,7 +2866,8 @@ class AsyncTeleBot:
             visible_file_name: Optional[str]=None,
             disable_content_type_detection: Optional[bool]=None,
             data: Optional[Union[Any, str]]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send general files.
 
@@ -2797,6 +2921,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: Identifier of a message thread, in which the message will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2815,7 +2942,8 @@ class AsyncTeleBot:
                 reply_to_message_id = reply_to_message_id, reply_markup = reply_markup, parse_mode = parse_mode,
                 disable_notification = disable_notification, timeout = timeout, caption = caption, thumb = thumb,
                 caption_entities = caption_entities, allow_sending_without_reply = allow_sending_without_reply,
-                disable_content_type_detection = disable_content_type_detection, visible_file_name = visible_file_name, protect_content = protect_content))
+                disable_content_type_detection = disable_content_type_detection, visible_file_name = visible_file_name, protect_content = protect_content,
+                message_thread_id = message_thread_id))
 
     async def send_sticker(
             self, chat_id: Union[int, str], sticker: Union[Any, str], 
@@ -2825,7 +2953,8 @@ class AsyncTeleBot:
             timeout: Optional[int]=None,
             allow_sending_without_reply: Optional[bool]=None,
             protect_content: Optional[bool]=None,
-            data: Union[Any, str]=None) -> types.Message:
+            data: Union[Any, str]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send static .WEBP, animated .TGS, or video .WEBM stickers.
         On success, the sent Message is returned.
@@ -2862,6 +2991,9 @@ class AsyncTeleBot:
         :param data: function typo miss compatibility: do not use it
         :type data: :obj:`str`
 
+        :param message_thread_id: Identifier of a message thread, in which the message will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2879,7 +3011,8 @@ class AsyncTeleBot:
                 self.token, chat_id, sticker, 'sticker',
                 reply_to_message_id=reply_to_message_id, reply_markup=reply_markup,
                 disable_notification=disable_notification, timeout=timeout, 
-                allow_sending_without_reply=allow_sending_without_reply, protect_content=protect_content))
+                allow_sending_without_reply=allow_sending_without_reply, protect_content=protect_content,
+                message_thread_id=message_thread_id))
 
     async def send_video(
             self, chat_id: Union[int, str], video: Union[Any, str], 
@@ -2897,7 +3030,8 @@ class AsyncTeleBot:
             allow_sending_without_reply: Optional[bool]=None,
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
             timeout: Optional[int]=None,
-            data: Optional[Union[Any, str]]=None) -> types.Message:
+            data: Optional[Union[Any, str]]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send video files, Telegram clients support mp4 videos (other formats may be sent as Document).
         
@@ -2956,6 +3090,9 @@ class AsyncTeleBot:
         :param data: function typo miss compatibility: do not use it
         :type data: :obj:`str`
 
+        :param message_thread_id: Identifier of a message thread, in which the video will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2973,7 +3110,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_video(
                 self.token, chat_id, video, duration, caption, reply_to_message_id, reply_markup,
                 parse_mode, supports_streaming, disable_notification, timeout, thumb, width, height,
-                caption_entities, allow_sending_without_reply, protect_content))
+                caption_entities, allow_sending_without_reply, protect_content, message_thread_id))
 
     async def send_animation(
             self, chat_id: Union[int, str], animation: Union[Any, str], 
@@ -2989,7 +3126,8 @@ class AsyncTeleBot:
             reply_to_message_id: Optional[int]=None,
             allow_sending_without_reply: Optional[bool]=None,
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
-            timeout: Optional[int]=None, ) -> types.Message:
+            timeout: Optional[int]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send animation files (GIF or H.264/MPEG-4 AVC video without sound).
         On success, the sent Message is returned. Bots can currently send animation files of up to 50 MB in size, this limit may be changed in the future.
@@ -3047,6 +3185,9 @@ class AsyncTeleBot:
         :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
+        :param message_thread_id: Identifier of a message thread, in which the video will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -3059,7 +3200,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_animation(
                 self.token, chat_id, animation, duration, caption, reply_to_message_id,
                 reply_markup, parse_mode, disable_notification, timeout, thumb,
-                caption_entities, allow_sending_without_reply, width, height, protect_content))
+                caption_entities, allow_sending_without_reply, width, height, protect_content, message_thread_id))
 
     async def send_video_note(
             self, chat_id: Union[int, str], data: Union[Any, str], 
@@ -3071,7 +3212,8 @@ class AsyncTeleBot:
             timeout: Optional[int]=None, 
             thumb: Optional[Union[Any, str]]=None,
             allow_sending_without_reply: Optional[bool]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         As of v.4.0, Telegram clients support rounded square MPEG4 videos of up to 1 minute long.
         Use this method to send video messages. On success, the sent Message is returned.
@@ -3117,6 +3259,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: Identifier of a message thread, in which the video note will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -3127,7 +3272,7 @@ class AsyncTeleBot:
         return types.Message.de_json(
             await asyncio_helper.send_video_note(
                 self.token, chat_id, data, duration, length, reply_to_message_id, reply_markup,
-                disable_notification, timeout, thumb, allow_sending_without_reply, protect_content))
+                disable_notification, timeout, thumb, allow_sending_without_reply, protect_content, message_thread_id))
 
     async def send_media_group(
             self, chat_id: Union[int, str], 
@@ -3138,7 +3283,8 @@ class AsyncTeleBot:
             protect_content: Optional[bool]=None,
             reply_to_message_id: Optional[int]=None, 
             timeout: Optional[int]=None,
-            allow_sending_without_reply: Optional[bool]=None) -> List[types.Message]:
+            allow_sending_without_reply: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> List[types.Message]:
         """
         Use this method to send a group of photos, videos, documents or audios as an album. Documents and audio files
         can be only grouped in an album with messages of the same type. On success, an array of Messages that were sent is returned.
@@ -3166,6 +3312,9 @@ class AsyncTeleBot:
         :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
+        :param message_thread_id: Identifier of a message thread, in which the messages will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, an array of Messages that were sent is returned.
         :rtype: List[types.Message]
         """
@@ -3175,7 +3324,7 @@ class AsyncTeleBot:
 
         result = await asyncio_helper.send_media_group(
             self.token, chat_id, media, disable_notification, reply_to_message_id, timeout, 
-            allow_sending_without_reply, protect_content)
+            allow_sending_without_reply, protect_content, message_thread_id)
         return [types.Message.de_json(msg) for msg in result]
 
     async def send_location(
@@ -3190,7 +3339,8 @@ class AsyncTeleBot:
             heading: Optional[int]=None, 
             proximity_alert_radius: Optional[int]=None, 
             allow_sending_without_reply: Optional[bool]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send point on the map. On success, the sent Message is returned.
 
@@ -3237,6 +3387,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: Identifier of a message thread, in which the message will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -3249,7 +3402,7 @@ class AsyncTeleBot:
                 self.token, chat_id, latitude, longitude, live_period, 
                 reply_to_message_id, reply_markup, disable_notification, timeout, 
                 horizontal_accuracy, heading, proximity_alert_radius, 
-                allow_sending_without_reply, protect_content))
+                allow_sending_without_reply, protect_content, message_thread_id))
 
     async def edit_message_live_location(
             self, latitude: float, longitude: float, 
@@ -3356,7 +3509,8 @@ class AsyncTeleBot:
             allow_sending_without_reply: Optional[bool]=None,
             google_place_id: Optional[str]=None,
             google_place_type: Optional[str]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send information about a venue. On success, the sent Message is returned.
         
@@ -3411,6 +3565,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: The thread to which the message will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -3422,7 +3579,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_venue(
                 self.token, chat_id, latitude, longitude, title, address, foursquare_id, foursquare_type,
                 disable_notification, reply_to_message_id, reply_markup, timeout,
-                allow_sending_without_reply, google_place_id, google_place_type, protect_content)
+                allow_sending_without_reply, google_place_id, google_place_type, protect_content, message_thread_id)
         )
 
     async def send_contact(
@@ -3434,7 +3591,8 @@ class AsyncTeleBot:
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             timeout: Optional[int]=None,
             allow_sending_without_reply: Optional[bool]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send phone contacts. On success, the sent Message is returned.
 
@@ -3476,6 +3634,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: The thread to which the message will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -3487,7 +3648,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_contact(
                 self.token, chat_id, phone_number, first_name, last_name, vcard,
                 disable_notification, reply_to_message_id, reply_markup, timeout,
-                allow_sending_without_reply, protect_content)
+                allow_sending_without_reply, protect_content, message_thread_id)
         )
 
     async def send_chat_action(
@@ -3670,7 +3831,8 @@ class AsyncTeleBot:
             is_anonymous: Optional[bool]=None, 
             can_manage_chat: Optional[bool]=None, 
             can_manage_video_chats: Optional[bool]=None,
-            can_manage_voice_chats: Optional[bool]=None) -> bool:
+            can_manage_voice_chats: Optional[bool]=None,
+            can_manage_topics: Optional[bool]=None) -> bool:
         """
         Use this method to promote or demote a user in a supergroup or a channel. The bot must be an administrator
         in the chat for this to work and must have the appropriate admin rights.
@@ -3727,6 +3889,10 @@ class AsyncTeleBot:
         :param can_manage_voice_chats: Deprecated, use can_manage_video_chats.
         :type can_manage_voice_chats: :obj:`bool`
 
+        :param can_manage_topics: Pass True if the user is allowed to create, rename, close,
+            and reopen forum topics, supergroups only
+        :type can_manage_topics: :obj:`bool`
+
         :return: True on success.
         :rtype: :obj:`bool`
         """
@@ -3740,7 +3906,7 @@ class AsyncTeleBot:
             self.token, chat_id, user_id, can_change_info, can_post_messages,
             can_edit_messages, can_delete_messages, can_invite_users,
             can_restrict_members, can_pin_messages, can_promote_members,
-            is_anonymous, can_manage_chat, can_manage_video_chats)
+            is_anonymous, can_manage_chat, can_manage_video_chats, can_manage_topics)
 
     async def set_chat_administrator_custom_title(
             self, chat_id: Union[int, str], user_id: int, custom_title: str) -> bool:
@@ -4406,7 +4572,8 @@ class AsyncTeleBot:
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             timeout: Optional[int]=None,
             allow_sending_without_reply: Optional[bool]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Used to send the game.
 
@@ -4436,6 +4603,9 @@ class AsyncTeleBot:
         :param protect_content: Pass True, if content of the message needs to be protected from being viewed by the bot.
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: Identifier of the thread to which the message will be sent.
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :obj:`types.Message`
         """
@@ -4446,7 +4616,7 @@ class AsyncTeleBot:
         result = await asyncio_helper.send_game(
             self.token, chat_id, game_short_name, disable_notification,
             reply_to_message_id, reply_markup, timeout, 
-            allow_sending_without_reply, protect_content)
+            allow_sending_without_reply, protect_content, message_thread_id)
         return types.Message.de_json(result)
 
     async def set_game_score(
@@ -4542,7 +4712,8 @@ class AsyncTeleBot:
             allow_sending_without_reply: Optional[bool]=None,
             max_tip_amount: Optional[int] = None,
             suggested_tip_amounts: Optional[List[int]]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Sends invoice.
 
@@ -4641,6 +4812,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: The identifier of a message thread, in which the invoice message will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :obj:`types.Message`
         """
@@ -4654,7 +4828,7 @@ class AsyncTeleBot:
             photo_height, need_name, need_phone_number, need_email, need_shipping_address,
             send_phone_number_to_provider, send_email_to_provider, is_flexible, disable_notification,
             reply_to_message_id, reply_markup, provider_data, timeout, allow_sending_without_reply,
-            max_tip_amount, suggested_tip_amounts, protect_content)
+            max_tip_amount, suggested_tip_amounts, protect_content, message_thread_id)
         return types.Message.de_json(result)
 
 
@@ -4778,7 +4952,8 @@ class AsyncTeleBot:
             allow_sending_without_reply: Optional[bool]=None, 
             timeout: Optional[int]=None,
             explanation_entities: Optional[List[types.MessageEntity]]=None,
-            protect_content: Optional[bool]=None) -> types.Message:
+            protect_content: Optional[bool]=None,
+            message_thread_id: Optional[int]=None) -> types.Message:
         """
         Use this method to send a native poll.
         On success, the sent Message is returned.
@@ -4846,6 +5021,9 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
+        :param message_thread_id: The identifier of a message thread, in which the poll will be sent
+        :type message_thread_id: :obj:`int`
+
         :return: On success, the sent Message is returned.
         :rtype: :obj:`types.Message`
         """
@@ -4864,7 +5042,7 @@ class AsyncTeleBot:
                 is_anonymous, type, allows_multiple_answers, correct_option_id,
                 explanation, explanation_parse_mode, open_period, close_date, is_closed,
                 disable_notification, reply_to_message_id, allow_sending_without_reply,
-                reply_markup, timeout, explanation_entities, protect_content))
+                reply_markup, timeout, explanation_entities, protect_content, message_thread_id))
 
     async def stop_poll(
             self, chat_id: Union[int, str], message_id: int, 
@@ -5293,6 +5471,151 @@ class AsyncTeleBot:
         """
         return await asyncio_helper.delete_sticker_from_set(self.token, sticker)
 
+    async def create_forum_topic(self,
+            chat_id: int, name: str, icon_color: Optional[int]=None,
+            icon_custom_emoji_id: Optional[str]=None) -> types.ForumTopic:
+        """
+        Use this method to create a topic in a forum supergroup chat. The bot must be an administrator
+        in the chat for this to work and must have the can_manage_topics administrator rights.
+        Returns information about the created topic as a ForumTopic object.
+
+        Telegram documentation: https://core.telegram.org/bots/api#createforumtopic
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+
+        :param name: Name of the topic, 1-128 characters
+        :type name: :obj:`str`
+
+        :param icon_color: Color of the topic icon in RGB format. Currently, must be one of 0x6FB9F0, 0xFFD67E, 0xCB86DB, 0x8EEE98, 0xFF93B2, or 0xFB6F5F
+        :type icon_color: :obj:`int`
+
+        :param icon_custom_emoji_id: Custom emoji for the topic icon. Must be an emoji of type “tgs” and must be exactly 1 character long
+        :type icon_custom_emoji_id: :obj:`str`
+
+        :return: On success, information about the created topic is returned as a ForumTopic object.
+        :rtype: :class:`telebot.types.ForumTopic`
+        """
+        return types.ForumTopic.de_json(
+            await asyncio_helper.create_forum_topic(self.token, chat_id, name, icon_color, icon_custom_emoji_id)
+        )
+
+    async def edit_forum_topic(
+            self, chat_id: Union[int, str],
+            message_thread_id: int, name: str,
+            icon_custom_emoji_id: str,
+        ) -> bool:
+        """
+        Use this method to edit name and icon of a topic in a forum supergroup chat. The bot must be an
+        administrator in the chat for this to work and must have can_manage_topics administrator rights,
+        unless it is the creator of the topic. Returns True on success.
+
+        Telegram Documentation: https://core.telegram.org/bots/api#editforumtopic
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+
+        :param message_thread_id: Identifier of the topic to edit
+        :type message_thread_id: :obj:`int`
+
+        :param name: New name of the topic, 1-128 characters
+        :type name: :obj:`str`
+
+        :param icon_custom_emoji_id: New custom emoji for the topic icon. Must be an emoji of type “tgs” and must be exactly 1 character long
+        :type icon_custom_emoji_id: :obj:`str`
+
+        :return: On success, True is returned.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.edit_forum_topic(self.token, chat_id, message_thread_id, name, icon_custom_emoji_id)
+
+    async def close_forum_topic(self, chat_id: Union[str, int], message_thread_id: int) -> bool:
+        """
+        Use this method to close an open topic in a forum supergroup chat. The bot must be an administrator
+        in the chat for this to work and must have the can_manage_topics administrator rights, unless it is
+        the creator of the topic. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#closeforumtopic
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+
+        :param message_thread_id: Identifier of the topic to close
+        :type message_thread_id: :obj:`int`
+
+        :return: On success, True is returned.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.close_forum_topic(self.token, chat_id, message_thread_id)
+
+    async def reopen_forum_topic(self, chat_id: Union[str, int], message_thread_id: int) -> bool:
+        """
+        Use this method to reopen a closed topic in a forum supergroup chat. The bot must be an administrator in the chat
+        for this to work and must have the can_manage_topics administrator rights, unless it is the creator of the topic.
+        Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#reopenforumtopic
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+
+        :param message_thread_id: Identifier of the topic to reopen
+        :type message_thread_id: :obj:`int`
+
+        :return: On success, True is returned.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.reopen_forum_topic(self.token, chat_id, message_thread_id)
+
+    async def delete_forum_topic(self, chat_id: Union[str, int], message_thread_id: int) -> bool:
+        """
+        Use this method to delete a topic in a forum supergroup chat. The bot must be an administrator in the chat for this
+        to work and must have the can_manage_topics administrator rights, unless it is the creator of the topic. Returns True
+        on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#deleteforumtopic
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+
+        :param message_thread_id: Identifier of the topic to delete
+        :type message_thread_id: :obj:`int`
+
+        :return: On success, True is returned.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.delete_forum_topic(self.token, chat_id, message_thread_id)
+
+    async def unpin_all_forum_topic_messages(self, chat_id: Union[str, int], message_thread_id: int) -> bool:
+        """
+        Use this method to clear the list of pinned messages in a forum topic. The bot must be an administrator in the
+        chat for this to work and must have the can_pin_messages administrator right in the supergroup.
+        Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#unpinallforumtopicmessages
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+
+        :param message_thread_id: Identifier of the topic
+        :type message_thread_id: :obj:`int`
+
+        :return: On success, True is returned.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.unpin_all_forum_topic_messages(self.token, chat_id, message_thread_id)
+
+    async def get_forum_topic_icon_stickers(self) -> List[types.Sticker]:
+        """
+        Use this method to get custom emoji stickers, which can be used as a forum topic icon by any user.
+        Requires no parameters. Returns an Array of Sticker objects.
+
+        Telegram documentation: https://core.telegram.org/bots/api#getforumtopiciconstickers
+
+        :return: On success, a list of StickerSet objects is returned.
+        :rtype: List[:class:`telebot.types.StickerSet`]
+        """
+        return await asyncio_helper.get_forum_topic_icon_stickers(self.token)
 
     async def set_state(self, user_id: int, state: Union[State, int, str], chat_id: Optional[int]=None):
         """

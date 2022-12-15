@@ -515,8 +515,19 @@ class Chat(JsonDeserializable):
     :param last_name: Optional. Last name of the other party in a private chat
     :type last_name: :obj:`str`
 
+    :param is_forum: Optional. True, if the supergroup chat is a forum (has topics enabled)
+    :type is_forum: :obj:`bool`
+
     :param photo: Optional. Chat photo. Returned only in getChat.
     :type photo: :class:`telebot.types.ChatPhoto`
+
+    :param active_usernames: Optional. If non-empty, the list of all active chat usernames; for private chats, supergroups and channels.
+        Returned only in getChat.
+    :type active_usernames: :obj:`list` of :obj:`str`
+
+    :param emoji_status_custom_emoji_id: Optional. Custom emoji identifier of emoji status of the other party in a private chat.
+        Returned only in getChat.
+    :type emoji_status_custom_emoji_id: :obj:`str`
 
     :param bio: Optional. Bio of the other party in a private chat. Returned only in getChat.
     :type bio: :obj:`str`
@@ -603,13 +614,15 @@ class Chat(JsonDeserializable):
                  permissions=None, slow_mode_delay=None,
                  message_auto_delete_time=None, has_protected_content=None, sticker_set_name=None,
                  can_set_sticker_set=None, linked_chat_id=None, location=None, 
-                 join_to_send_messages=None, join_by_request=None, has_restricted_voice_and_video_messages=None, **kwargs):
+                 join_to_send_messages=None, join_by_request=None, has_restricted_voice_and_video_messages=None, 
+                 is_forum=None, active_usernames=None, emoji_status_custom_emoji_id=None, **kwargs):
         self.id: int = id
         self.type: str = type
         self.title: str = title
         self.username: str = username
         self.first_name: str = first_name
         self.last_name: str = last_name
+        self.is_forum: bool = is_forum
         self.photo: ChatPhoto = photo
         self.bio: str = bio
         self.join_to_send_messages: bool = join_to_send_messages
@@ -627,6 +640,8 @@ class Chat(JsonDeserializable):
         self.can_set_sticker_set: bool = can_set_sticker_set
         self.linked_chat_id: int = linked_chat_id
         self.location: ChatLocation = location
+        self.active_usernames: List[str] = active_usernames
+        self.emoji_status_custom_emoji_id: str = emoji_status_custom_emoji_id
 
 
 class MessageID(JsonDeserializable):
@@ -690,6 +705,9 @@ class Message(JsonDeserializable):
     :param message_id: Unique message identifier inside this chat
     :type message_id: :obj:`int`
 
+    :param message_thread_id: Optional. Unique identifier of a message thread to which the message belongs; for supergroups only
+    :type message_thread_id: :obj:`int`
+
     :param from_user: Optional. Sender of the message; empty for messages sent to channels. For backward compatibility, the 
         field contains a fake sender user in non-channel chats, if the message was sent on behalf of a chat.
     :type from_user: :class:`telebot.types.User`
@@ -727,6 +745,9 @@ class Message(JsonDeserializable):
 
     :param forward_date: Optional. For forwarded messages, date the original message was sent in Unix time
     :type forward_date: :obj:`int`
+
+    :param is_topic_message: Optional. True, if the message is sent to a forum topic
+    :type is_topic_message: :obj:`bool`
 
     :param is_automatic_forward: Optional. :obj:`bool`, if the message is a channel post that was automatically 
         forwarded to the connected discussion group
@@ -878,6 +899,15 @@ class Message(JsonDeserializable):
         proximity alert while sharing Live Location.
     :type proximity_alert_triggered: :class:`telebot.types.ProximityAlertTriggered`
 
+    :param forum_topic_created: Optional. Service message: forum topic created
+    :type forum_topic_created: :class:`telebot.types.ForumTopicCreated`
+
+    :param forum_topic_closed: Optional. Service message: forum topic closed
+    :type forum_topic_closed: :class:`telebot.types.ForumTopicClosed`
+
+    :param forum_topic_reopened: Optional. Service message: forum topic reopened
+    :type forum_topic_reopened: :class:`telebot.types.ForumTopicReopened`
+
     :param video_chat_scheduled: Optional. Service message: video chat scheduled
     :type video_chat_scheduled: :class:`telebot.types.VideoChatScheduled`
 
@@ -926,6 +956,10 @@ class Message(JsonDeserializable):
             opts['forward_date'] = obj.get('forward_date')
         if 'is_automatic_forward' in obj:
             opts['is_automatic_forward'] = obj.get('is_automatic_forward')
+        if 'is_topic_message' in obj:
+            opts['is_topic_message'] = obj.get('is_topic_message')
+        if 'message_thread_id' in obj:
+            opts['message_thread_id'] = obj.get('message_thread_id')
         if 'reply_to_message' in obj:
             opts['reply_to_message'] = Message.de_json(obj['reply_to_message'])
         if 'via_bot' in obj:
@@ -1067,6 +1101,15 @@ class Message(JsonDeserializable):
             content_type = 'message_auto_delete_timer_changed'
         if 'reply_markup' in obj:
             opts['reply_markup'] = InlineKeyboardMarkup.de_json(obj['reply_markup'])
+        if 'forum_topic_created' in obj:
+            opts['forum_topic_created'] = ForumTopicCreated.de_json(obj['forum_topic_created'])
+            content_type = 'forum_topic_created'
+        if 'forum_topic_closed' in obj:
+            opts['forum_topic_closed'] = ForumTopicClosed.de_json(obj['forum_topic_closed'])
+            content_type = 'forum_topic_closed'
+        if 'forum_topic_reopened' in obj:
+            opts['forum_topic_reopened'] = ForumTopicReopened.de_json(obj['forum_topic_reopened'])
+            content_type = 'forum_topic_reopened'
         return cls(message_id, from_user, date, chat, content_type, opts, json_string)
 
     @classmethod
@@ -1152,6 +1195,11 @@ class Message(JsonDeserializable):
         self.successful_payment: Optional[SuccessfulPayment] = None
         self.connected_website: Optional[str] = None
         self.reply_markup: Optional[InlineKeyboardMarkup] = None
+        self.message_thread_id: Optional[int] = None
+        self.is_topic_message: Optional[bool] = None
+        self.forum_topic_created: Optional[ForumTopicCreated] = None
+        self.forum_topic_closed: Optional[ForumTopicClosed] = None
+        self.forum_topic_reopened: Optional[ForumTopicReopened] = None
         for key in options:
             setattr(self, key, options[key])
         self.json = json_string
@@ -1232,7 +1280,8 @@ class Message(JsonDeserializable):
                 entity_string_decoded = entity_string.decode("utf-16-le")
                 last_occurence = html_text.rfind(entity_string_decoded)
                 string_length = len(entity_string_decoded)
-                html_text = html_text.replace(html_text[last_occurence:last_occurence+string_length], formatted_string)
+                #html_text = html_text.replace(html_text[last_occurence:last_occurence+string_length], formatted_string)
+                html_text = html_text[:last_occurence] + formatted_string + html_text[last_occurence+string_length:]
         if offset * 2 < len(utf16_text):
             html_text += func(utf16_text[offset * 2:])
 
@@ -2563,7 +2612,7 @@ class ChatMember(JsonDeserializable):
                  can_send_messages=None, can_send_media_messages=None, can_send_polls=None,
                  can_send_other_messages=None, can_add_web_page_previews=None,  
                  can_manage_chat=None, can_manage_video_chats=None, 
-                 until_date=None, **kwargs):
+                 until_date=None, can_manage_topics=None, **kwargs):
         self.user: User = user
         self.status: str = status
         self.custom_title: str = custom_title
@@ -2587,6 +2636,7 @@ class ChatMember(JsonDeserializable):
         self.can_manage_video_chats: bool = can_manage_video_chats
         self.can_manage_voice_chats: bool = self.can_manage_video_chats   # deprecated, for backward compatibility
         self.until_date: int = until_date
+        self.can_manage_topics: bool = can_manage_topics
 
 
 class ChatMemberOwner(ChatMember):
@@ -2666,6 +2716,10 @@ class ChatMemberAdministrator(ChatMember):
     :param can_pin_messages: Optional. True, if the user is allowed to pin messages; groups and supergroups only
     :type can_pin_messages: :obj:`bool`
 
+    :param can_manage_topics: Optional. True, if the user is allowed to create, rename, close, and reopen forum topics;
+        supergroups only
+    :type can_manage_topics: :obj:`bool`
+
     :param custom_title: Optional. Custom title for this user
     :type custom_title: :obj:`str`
 
@@ -2716,6 +2770,9 @@ class ChatMemberRestricted(ChatMember):
 
     :param can_pin_messages: True, if the user is allowed to pin messages
     :type can_pin_messages: :obj:`bool`
+
+    :param can_manage_topics: True, if the user is allowed to create forum topics
+    :type can_manage_topics: :obj:`bool`
 
     :param can_send_messages: True, if the user is allowed to send text messages, contacts, locations and venues
     :type can_send_messages: :obj:`bool`
@@ -2819,6 +2876,10 @@ class ChatPermissions(JsonDeserializable, JsonSerializable, Dictionaryable):
     :param can_pin_messages: Optional. True, if the user is allowed to pin messages. Ignored in public supergroups
     :type can_pin_messages: :obj:`bool`
 
+    :param can_manage_topics: Optional. True, if the user is allowed to create forum topics. If omitted defaults to the
+        value of can_pin_messages
+    :type can_manage_topics: :obj:`bool`    
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.ChatPermissions`
     """
@@ -2831,7 +2892,8 @@ class ChatPermissions(JsonDeserializable, JsonSerializable, Dictionaryable):
     def __init__(self, can_send_messages=None, can_send_media_messages=None,
                  can_send_polls=None, can_send_other_messages=None,
                  can_add_web_page_previews=None, can_change_info=None,
-                 can_invite_users=None, can_pin_messages=None, **kwargs):
+                 can_invite_users=None, can_pin_messages=None, 
+                 can_manage_topics=None, **kwargs):
         self.can_send_messages: bool = can_send_messages
         self.can_send_media_messages: bool = can_send_media_messages
         self.can_send_polls: bool = can_send_polls
@@ -2840,6 +2902,7 @@ class ChatPermissions(JsonDeserializable, JsonSerializable, Dictionaryable):
         self.can_change_info: bool = can_change_info
         self.can_invite_users: bool = can_invite_users
         self.can_pin_messages: bool = can_pin_messages
+        self.can_manage_topics: bool = can_manage_topics
 
     def to_json(self):
         return json.dumps(self.to_dict())
@@ -2862,6 +2925,9 @@ class ChatPermissions(JsonDeserializable, JsonSerializable, Dictionaryable):
             json_dict['can_invite_users'] = self.can_invite_users
         if self.can_pin_messages is not None:
             json_dict['can_pin_messages'] = self.can_pin_messages
+        if self.can_manage_topics is not None:
+            json_dict['can_manage_topics'] = self.can_manage_topics
+        
         return json_dict
 
 
@@ -5699,9 +5765,6 @@ class InputMediaPhoto(InputMedia):
 
     Telegram Documentation: https://core.telegram.org/bots/api#inputmediaphoto
 
-    :param type: Type of the result, must be photo
-    :type type: :obj:`str`
-
     :param media: File to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), pass an 
         HTTP URL for Telegram to get a file from the Internet, or pass “attach://<file_attach_name>” to upload a new one using 
         multipart/form-data under <file_attach_name> name. More information on Sending Files »
@@ -5721,11 +5784,12 @@ class InputMediaPhoto(InputMedia):
     :return: Instance of the class
     :rtype: :class:`telebot.types.InputMediaPhoto`
     """
-    def __init__(self, media, caption=None, parse_mode=None):
+    def __init__(self, media, caption=None, parse_mode=None, caption_entities=None):
         if util.is_pil_image(media):
             media = util.pil_image_to_file(media)
     
-        super(InputMediaPhoto, self).__init__(type="photo", media=media, caption=caption, parse_mode=parse_mode)
+        super(InputMediaPhoto, self).__init__(
+            type="photo", media=media, caption=caption, parse_mode=parse_mode, caption_entities=caption_entities)
 
     def to_dict(self):
         return super(InputMediaPhoto, self).to_dict()
@@ -5736,9 +5800,6 @@ class InputMediaVideo(InputMedia):
     Represents a video to be sent.
 
     Telegram Documentation: https://core.telegram.org/bots/api#inputmediavideo
-
-    :param type: Type of the result, must be video
-    :type type: :obj:`str`
 
     :param media: File to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), pass an 
         HTTP URL for Telegram to get a file from the Internet, or pass “attach://<file_attach_name>” to upload a new one using 
@@ -5778,9 +5839,10 @@ class InputMediaVideo(InputMedia):
     :return: Instance of the class
     :rtype: :class:`telebot.types.InputMediaVideo`
     """
-    def __init__(self, media, thumb=None, caption=None, parse_mode=None, width=None, height=None, duration=None,
-                 supports_streaming=None):
-        super(InputMediaVideo, self).__init__(type="video", media=media, caption=caption, parse_mode=parse_mode)
+    def __init__(self, media, thumb=None, caption=None, parse_mode=None, caption_entities=None,
+                 width=None, height=None, duration=None, supports_streaming=None):
+        super(InputMediaVideo, self).__init__(
+            type="video", media=media, caption=caption, parse_mode=parse_mode, caption_entities=caption_entities)
         self.thumb = thumb
         self.width = width
         self.height = height
@@ -5807,9 +5869,6 @@ class InputMediaAnimation(InputMedia):
     Represents an animation file (GIF or H.264/MPEG-4 AVC video without sound) to be sent.
 
     Telegram Documentation: https://core.telegram.org/bots/api#inputmediaanimation
-
-    :param type: Type of the result, must be animation
-    :type type: :obj:`str`
 
     :param media: File to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), pass an 
         HTTP URL for Telegram to get a file from the Internet, or pass “attach://<file_attach_name>” to upload a new one using 
@@ -5846,8 +5905,10 @@ class InputMediaAnimation(InputMedia):
     :return: Instance of the class
     :rtype: :class:`telebot.types.InputMediaAnimation`
     """
-    def __init__(self, media, thumb=None, caption=None, parse_mode=None, width=None, height=None, duration=None):
-        super(InputMediaAnimation, self).__init__(type="animation", media=media, caption=caption, parse_mode=parse_mode)
+    def __init__(self, media, thumb=None, caption=None, parse_mode=None, caption_entities=None,
+                 width=None, height=None, duration=None):
+        super(InputMediaAnimation, self).__init__(
+            type="animation", media=media, caption=caption, parse_mode=parse_mode, caption_entities=caption_entities)
         self.thumb = thumb
         self.width = width
         self.height = height
@@ -5871,9 +5932,6 @@ class InputMediaAudio(InputMedia):
     Represents an audio file to be treated as music to be sent.
 
     Telegram Documentation: https://core.telegram.org/bots/api#inputmediaaudio
-
-    :param type: Type of the result, must be audio
-    :type type: :obj:`str`
 
     :param media: File to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), pass an 
         HTTP URL for Telegram to get a file from the Internet, or pass “attach://<file_attach_name>” to upload a new one using 
@@ -5910,8 +5968,10 @@ class InputMediaAudio(InputMedia):
     :return: Instance of the class
     :rtype: :class:`telebot.types.InputMediaAudio`
     """
-    def __init__(self, media, thumb=None, caption=None, parse_mode=None, duration=None, performer=None, title=None):
-        super(InputMediaAudio, self).__init__(type="audio", media=media, caption=caption, parse_mode=parse_mode)
+    def __init__(self, media, thumb=None, caption=None, parse_mode=None, caption_entities=None,
+                 duration=None, performer=None, title=None):
+        super(InputMediaAudio, self).__init__(
+            type="audio", media=media, caption=caption, parse_mode=parse_mode, caption_entities=caption_entities)
         self.thumb = thumb
         self.duration = duration
         self.performer = performer
@@ -5936,10 +5996,7 @@ class InputMediaDocument(InputMedia):
 
     Telegram Documentation: https://core.telegram.org/bots/api#inputmediadocument
 
-    :param type: Type of the result, must be document
-    :type type: :obj:`str`
-
-    :param media: File to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), pass an 
+    :param media: File to send. Pass a file_id to send a file that exists on the Telegram servers (recommended), pass an
         HTTP URL for Telegram to get a file from the Internet, or pass “attach://<file_attach_name>” to upload a new one using 
         multipart/form-data under <file_attach_name> name. More information on Sending Files »
     :type media: :obj:`str`
@@ -5969,8 +6026,10 @@ class InputMediaDocument(InputMedia):
     :return: Instance of the class
     :rtype: :class:`telebot.types.InputMediaDocument`
     """
-    def __init__(self, media, thumb=None, caption=None, parse_mode=None, disable_content_type_detection=None):
-        super(InputMediaDocument, self).__init__(type="document", media=media, caption=caption, parse_mode=parse_mode)
+    def __init__(self, media, thumb=None, caption=None, parse_mode=None, caption_entities=None,
+                 disable_content_type_detection=None):
+        super(InputMediaDocument, self).__init__(
+            type="document", media=media, caption=caption, parse_mode=parse_mode, caption_entities=caption_entities)
         self.thumb = thumb
         self.disable_content_type_detection = disable_content_type_detection
 
@@ -6592,6 +6651,9 @@ class ChatAdministratorRights(JsonDeserializable, JsonSerializable, Dictionaryab
     :param can_pin_messages: Optional. True, if the user is allowed to pin messages; groups and supergroups only
     :type can_pin_messages: :obj:`bool`
 
+    :param can_manage_topics: Optional. True, if the user is allowed to create, rename, close, and reopen forum topics; supergroups only
+    :type can_manage_topics: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.ChatAdministratorRights`
     """
@@ -6606,7 +6668,7 @@ class ChatAdministratorRights(JsonDeserializable, JsonSerializable, Dictionaryab
         can_delete_messages: bool, can_manage_video_chats: bool, can_restrict_members: bool,
         can_promote_members: bool, can_change_info: bool, can_invite_users: bool,
         can_post_messages: bool=None, can_edit_messages: bool=None,
-        can_pin_messages: bool=None) -> None:
+        can_pin_messages: bool=None, can_manage_topics: bool=None) -> None:
         
         self.is_anonymous: bool = is_anonymous
         self.can_manage_chat: bool = can_manage_chat
@@ -6619,6 +6681,7 @@ class ChatAdministratorRights(JsonDeserializable, JsonSerializable, Dictionaryab
         self.can_post_messages: bool = can_post_messages
         self.can_edit_messages: bool = can_edit_messages
         self.can_pin_messages: bool = can_pin_messages
+        self.can_manage_topics: bool = can_manage_topics
 
     def to_dict(self):
         json_dict = {
@@ -6637,6 +6700,8 @@ class ChatAdministratorRights(JsonDeserializable, JsonSerializable, Dictionaryab
             json_dict['can_edit_messages'] = self.can_edit_messages
         if self.can_pin_messages is not None:
             json_dict['can_pin_messages'] = self.can_pin_messages
+        if self.can_manage_topics is not None:
+            json_dict['can_manage_topics'] = self.can_manage_topics
         return json_dict
     
     def to_json(self):
@@ -6703,3 +6768,104 @@ class InputFile:
         File object.
         """
         return self._file
+
+
+class ForumTopicCreated(JsonDeserializable):
+    """
+    This object represents a service message about a new forum topic created in the chat.
+    
+    Telegram documentation: https://core.telegram.org/bots/api#forumtopiccreated
+
+    :param name: Name of the topic
+    :type name: :obj:`str`
+
+    :param icon_color: Color of the topic icon in RGB format
+    :type icon_color: :obj:`int`
+
+    :param icon_custom_emoji_id: Optional. Unique identifier of the custom emoji shown as the topic icon
+    :type icon_custom_emoji_id: :obj:`str`
+
+    :return: Instance of the class
+    :rtype: :class:`telebot.types.ForumTopicCreated`
+    """
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+
+    def __init__(self, name: str, icon_color: int, icon_custom_emoji_id: Optional[str]=None) -> None:
+        self.name: str = name
+        self.icon_color: int = icon_color
+        self.icon_custom_emoji_id: Optional[str] = icon_custom_emoji_id
+
+
+class ForumTopicClosed(JsonDeserializable):
+    """
+    This object represents a service message about a forum topic closed in the chat. Currently holds no information.
+    
+    Telegram documentation: https://core.telegram.org/bots/api#forumtopicclosed
+    """
+    # for future use
+    @classmethod
+    def de_json(cls, json_string):
+        return cls()
+
+    def __init__(self) -> None:
+        pass
+
+
+class ForumTopicReopened(JsonDeserializable):
+    """
+    This object represents a service message about a forum topic reopened in the chat. Currently holds no information.
+
+    Telegram documentation: https://core.telegram.org/bots/api#forumtopicreopened
+    """
+    # for future use
+    @classmethod
+    def de_json(cls, json_string):
+        return cls()
+
+    def __init__(self) -> None:
+        pass
+
+
+class ForumTopic(JsonDeserializable):
+    """
+    This object represents a forum topic.
+
+    Telegram documentation: https://core.telegram.org/bots/api#forumtopic
+
+    :param message_thread_id: Unique identifier of the forum topic
+    :type message_thread_id: :obj:`int`
+
+    :param name: Name of the topic
+    :type name: :obj:`str`
+
+    :param icon_color: Color of the topic icon in RGB format
+    :type icon_color: :obj:`int`
+
+    :param icon_custom_emoji_id: Optional. Unique identifier of the custom emoji shown as the topic icon
+    :type icon_custom_emoji_id: :obj:`str`
+
+    :return: Instance of the class
+    :rtype: :class:`telebot.types.ForumTopic`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+
+    def __init__(self, message_thread_id: int, name: str, icon_color: int, icon_custom_emoji_id: Optional[str]=None) -> None:
+        self.message_thread_id: int = message_thread_id
+        self.name: str = name
+        self.icon_color: int = icon_color
+        self.icon_custom_emoji_id: Optional[str] = icon_custom_emoji_id
+
+
+
+
+
+
