@@ -978,7 +978,7 @@ class AsyncTeleBot:
         """
         self.message_handlers.append(handler_dict)
 
-    def register_message_handler(self, callback: Awaitable, content_types: Optional[List[str]]=None, commands: Optional[List[str]]=None,
+    def register_message_handler(self, callback: Callable[[Any], Awaitable], content_types: Optional[List[str]]=None, commands: Optional[List[str]]=None,
             regexp: Optional[str]=None, func: Optional[Callable]=None, chat_types: Optional[List[str]]=None, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers message handler.
@@ -1090,7 +1090,7 @@ class AsyncTeleBot:
         """
         self.edited_message_handlers.append(handler_dict)
 
-    def register_edited_message_handler(self, callback: Awaitable, content_types: Optional[List[str]]=None,
+    def register_edited_message_handler(self, callback: Callable[[Any], Awaitable], content_types: Optional[List[str]]=None,
         commands: Optional[List[str]]=None, regexp: Optional[str]=None, func: Optional[Callable]=None,
         chat_types: Optional[List[str]]=None, pass_bot: Optional[bool]=False, **kwargs):
         """
@@ -1195,7 +1195,7 @@ class AsyncTeleBot:
         """
         self.channel_post_handlers.append(handler_dict)
     
-    def register_channel_post_handler(self, callback: Awaitable, content_types: Optional[List[str]]=None, commands: Optional[List[str]]=None,
+    def register_channel_post_handler(self, callback: Callable[[Any], Awaitable], content_types: Optional[List[str]]=None, commands: Optional[List[str]]=None,
             regexp: Optional[str]=None, func: Optional[Callable]=None, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers channel post message handler.
@@ -1295,7 +1295,7 @@ class AsyncTeleBot:
         """
         self.edited_channel_post_handlers.append(handler_dict)
 
-    def register_edited_channel_post_handler(self, callback: Awaitable, content_types: Optional[List[str]]=None,
+    def register_edited_channel_post_handler(self, callback: Callable[[Any], Awaitable], content_types: Optional[List[str]]=None,
             commands: Optional[List[str]]=None, regexp: Optional[str]=None, func: Optional[Callable]=None, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers edited channel post message handler.
@@ -1371,7 +1371,7 @@ class AsyncTeleBot:
         """
         self.inline_handlers.append(handler_dict)
 
-    def register_inline_handler(self, callback: Awaitable, func: Callable, pass_bot: Optional[bool]=False, **kwargs):
+    def register_inline_handler(self, callback: Callable[[Any], Awaitable], func: Callable, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers inline handler.
 
@@ -1424,7 +1424,7 @@ class AsyncTeleBot:
         """
         self.chosen_inline_handlers.append(handler_dict)
 
-    def register_chosen_inline_handler(self, callback: Awaitable, func: Callable, pass_bot: Optional[bool]=False, **kwargs):
+    def register_chosen_inline_handler(self, callback: Callable[[Any], Awaitable], func: Callable, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers chosen inline handler.
 
@@ -1476,7 +1476,7 @@ class AsyncTeleBot:
         """
         self.callback_query_handlers.append(handler_dict)
 
-    def register_callback_query_handler(self, callback: Awaitable, func: Callable, pass_bot: Optional[bool]=False, **kwargs):
+    def register_callback_query_handler(self, callback: Callable[[Any], Awaitable], func: Callable, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers callback query handler.
 
@@ -1528,7 +1528,7 @@ class AsyncTeleBot:
         """
         self.shipping_query_handlers.append(handler_dict)
 
-    def register_shipping_query_handler(self, callback: Awaitable, func: Callable, pass_bot: Optional[bool]=False, **kwargs):
+    def register_shipping_query_handler(self, callback: Callable[[Any], Awaitable], func: Callable, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers shipping query handler.
 
@@ -1580,7 +1580,7 @@ class AsyncTeleBot:
         """
         self.pre_checkout_query_handlers.append(handler_dict)
     
-    def register_pre_checkout_query_handler(self, callback: Awaitable, func: Callable, pass_bot: Optional[bool]=False, **kwargs):
+    def register_pre_checkout_query_handler(self, callback: Callable[[Any], Awaitable], func: Callable, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers pre-checkout request handler.
 
@@ -1630,7 +1630,7 @@ class AsyncTeleBot:
         """
         self.poll_handlers.append(handler_dict)
 
-    def register_poll_handler(self, callback: Awaitable, func: Callable, pass_bot: Optional[bool]=False, **kwargs):
+    def register_poll_handler(self, callback: Callable[[Any], Awaitable], func: Callable, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers poll handler.
 
@@ -1683,7 +1683,7 @@ class AsyncTeleBot:
         """
         self.poll_answer_handlers.append(handler_dict)
 
-    def register_poll_answer_handler(self, callback: Awaitable, func: Callable, pass_bot: Optional[bool]=False, **kwargs):
+    def register_poll_answer_handler(self, callback: Callable[[Any], Awaitable], func: Callable, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers poll answer handler.
 
@@ -1736,7 +1736,7 @@ class AsyncTeleBot:
         """
         self.my_chat_member_handlers.append(handler_dict)
 
-    def register_my_chat_member_handler(self, callback: Awaitable, func: Optional[Callable]=None, pass_bot: Optional[bool]=False, **kwargs):
+    def register_my_chat_member_handler(self, callback: Callable[[Any], Awaitable], func: Optional[Callable]=None, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers my chat member handler.
 
@@ -1790,7 +1790,7 @@ class AsyncTeleBot:
         """
         self.chat_member_handlers.append(handler_dict)
 
-    def register_chat_member_handler(self, callback: Awaitable, func: Optional[Callable]=None, pass_bot: Optional[bool]=False, **kwargs):
+    def register_chat_member_handler(self, callback: Callable[[Any], Awaitable], func: Optional[Callable]=None, pass_bot: Optional[bool]=False, **kwargs):
         """
         Registers chat member handler.
 
@@ -1843,7 +1843,7 @@ class AsyncTeleBot:
         """
         self.chat_join_request_handlers.append(handler_dict)
 
-    def register_chat_join_request_handler(self, callback: Awaitable, func: Optional[Callable]=None, pass_bot:Optional[bool]=False, **kwargs):
+    def register_chat_join_request_handler(self, callback: Callable[[Any], Awaitable], func: Optional[Callable]=None, pass_bot:Optional[bool]=False, **kwargs):
         """
         Registers chat join request handler.
 
@@ -2116,7 +2116,7 @@ class AsyncTeleBot:
             from telebot.ext.aio import AsyncWebhookListener
         except (NameError, ImportError):
             raise ImportError("Please install uvicorn and fastapi in order to use `run_webhooks` method.")
-        self.webhook_listener = AsyncWebhookListener(self, secret_token, listen, port, ssl_context, '/'+url_path, debug)
+        self.webhook_listener = AsyncWebhookListener(bot=self, secret_token=secret_token, host=listen, port=port, ssl_context=ssl_context, url_path='/'+url_path)
         await self.webhook_listener.run_app()
 
 
@@ -2627,7 +2627,8 @@ class AsyncTeleBot:
             allow_sending_without_reply: Optional[bool]=None,
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
             timeout: Optional[int]=None,
-            message_thread_id: Optional[int]=None) -> types.Message:
+            message_thread_id: Optional[int]=None,
+            has_spoiler: Optional[bool]=None) -> types.Message:
         """
         Use this method to send photos. On success, the sent Message is returned.
 
@@ -2672,6 +2673,9 @@ class AsyncTeleBot:
 
         :param message_thread_id: Identifier of a message thread, in which the message will be sent
         :type message_thread_id: :obj:`int`
+
+        :param has_spoiler: Pass True, if the photo should be sent as a spoiler
+        :type has_spoiler: :obj:`bool`
         
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
@@ -2685,7 +2689,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_photo(
                 self.token, chat_id, photo, caption, reply_to_message_id, reply_markup,
                 parse_mode, disable_notification, timeout, caption_entities,
-                allow_sending_without_reply, protect_content, message_thread_id))
+                allow_sending_without_reply, protect_content, message_thread_id, has_spoiler))
 
     async def send_audio(
             self, chat_id: Union[int, str], audio: Union[Any, str], 
@@ -3031,7 +3035,8 @@ class AsyncTeleBot:
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
             timeout: Optional[int]=None,
             data: Optional[Union[Any, str]]=None,
-            message_thread_id: Optional[int]=None) -> types.Message:
+            message_thread_id: Optional[int]=None,
+            has_spoiler: Optional[bool]=None) -> types.Message:
         """
         Use this method to send video files, Telegram clients support mp4 videos (other formats may be sent as Document).
         
@@ -3093,6 +3098,9 @@ class AsyncTeleBot:
         :param message_thread_id: Identifier of a message thread, in which the video will be sent
         :type message_thread_id: :obj:`int`
 
+        :param has_spoiler: Pass True, if the video should be sent as a spoiler
+        :type has_spoiler: :obj:`bool`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -3110,7 +3118,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_video(
                 self.token, chat_id, video, duration, caption, reply_to_message_id, reply_markup,
                 parse_mode, supports_streaming, disable_notification, timeout, thumb, width, height,
-                caption_entities, allow_sending_without_reply, protect_content, message_thread_id))
+                caption_entities, allow_sending_without_reply, protect_content, message_thread_id, has_spoiler))
 
     async def send_animation(
             self, chat_id: Union[int, str], animation: Union[Any, str], 
@@ -3127,7 +3135,8 @@ class AsyncTeleBot:
             allow_sending_without_reply: Optional[bool]=None,
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             timeout: Optional[int]=None,
-            message_thread_id: Optional[int]=None) -> types.Message:
+            message_thread_id: Optional[int]=None,
+            has_spoiler: Optional[bool]=None) -> types.Message:
         """
         Use this method to send animation files (GIF or H.264/MPEG-4 AVC video without sound).
         On success, the sent Message is returned. Bots can currently send animation files of up to 50 MB in size, this limit may be changed in the future.
@@ -3188,6 +3197,9 @@ class AsyncTeleBot:
         :param message_thread_id: Identifier of a message thread, in which the video will be sent
         :type message_thread_id: :obj:`int`
 
+        :param has_spoiler: Pass True, if the animation should be sent as a spoiler
+        :type has_spoiler: :obj:`bool`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -3200,7 +3212,7 @@ class AsyncTeleBot:
             await asyncio_helper.send_animation(
                 self.token, chat_id, animation, duration, caption, reply_to_message_id,
                 reply_markup, parse_mode, disable_notification, timeout, thumb,
-                caption_entities, allow_sending_without_reply, width, height, protect_content, message_thread_id))
+                caption_entities, allow_sending_without_reply, width, height, protect_content, message_thread_id, has_spoiler))
 
     async def send_video_note(
             self, chat_id: Union[int, str], data: Union[Any, str], 
@@ -3409,7 +3421,7 @@ class AsyncTeleBot:
             chat_id: Optional[Union[int, str]]=None, 
             message_id: Optional[int]=None,
             inline_message_id: Optional[str]=None, 
-            reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
+            reply_markup: Optional[types.InlineKeyboardMarkup]=None,
             timeout: Optional[int]=None,
             horizontal_accuracy: Optional[float]=None, 
             heading: Optional[int]=None, 
@@ -3465,7 +3477,7 @@ class AsyncTeleBot:
             self, chat_id: Optional[Union[int, str]]=None, 
             message_id: Optional[int]=None,
             inline_message_id: Optional[str]=None, 
-            reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
+            reply_markup: Optional[types.InlineKeyboardMarkup]=None,
             timeout: Optional[int]=None) -> types.Message:
         """
         Use this method to stop updating a live location message before live_period expires.
@@ -3652,7 +3664,7 @@ class AsyncTeleBot:
         )
 
     async def send_chat_action(
-            self, chat_id: Union[int, str], action: str, timeout: Optional[int]=None) -> bool:
+            self, chat_id: Union[int, str], action: str, timeout: Optional[int]=None, message_thread_id: Optional[int]=None) -> bool:
         """
         Use this method when you need to tell the user that something is happening on the bot's side.
         The status is set for 5 seconds or less (when a message arrives from your bot, Telegram clients clear its typing status).
@@ -3675,10 +3687,13 @@ class AsyncTeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
+        :param message_thread_id: The thread to which the message will be sent(supergroups only)
+        :type message_thread_id: :obj:`int`
+
         :return: Returns True on success.
         :rtype: :obj:`bool`
         """
-        return await asyncio_helper.send_chat_action(self.token, chat_id, action, timeout)
+        return await asyncio_helper.send_chat_action(self.token, chat_id, action, timeout, message_thread_id)
 
     async def kick_chat_member(
             self, chat_id: Union[int, str], user_id: int, 
@@ -4458,7 +4473,7 @@ class AsyncTeleBot:
             parse_mode: Optional[str]=None,
             entities: Optional[List[types.MessageEntity]]=None,
             disable_web_page_preview: Optional[bool]=None,
-            reply_markup: Optional[REPLY_MARKUP_TYPES]=None) -> Union[types.Message, bool]:
+            reply_markup: Optional[types.InlineKeyboardMarkup]=None) -> Union[types.Message, bool]:
         """
         Use this method to edit text and game messages.
 
@@ -4504,7 +4519,7 @@ class AsyncTeleBot:
             self, media: Any, chat_id: Optional[Union[int, str]]=None, 
             message_id: Optional[int]=None,
             inline_message_id: Optional[str]=None, 
-            reply_markup: Optional[REPLY_MARKUP_TYPES]=None) -> Union[types.Message, bool]:
+            reply_markup: Optional[types.InlineKeyboardMarkup]=None) -> Union[types.Message, bool]:
         """
         Use this method to edit animation, audio, document, photo, or video messages.
         If a message is a part of a message album, then it can be edited only to a photo or a video.
@@ -4539,7 +4554,7 @@ class AsyncTeleBot:
             self, chat_id: Optional[Union[int, str]]=None, 
             message_id: Optional[int]=None,
             inline_message_id: Optional[str]=None, 
-            reply_markup: Optional[REPLY_MARKUP_TYPES]=None) -> Union[types.Message, bool]:
+            reply_markup: Optional[types.InlineKeyboardMarkup]=None) -> Union[types.Message, bool]:
         """
         Use this method to edit only the reply markup of messages.
 
@@ -5046,7 +5061,7 @@ class AsyncTeleBot:
 
     async def stop_poll(
             self, chat_id: Union[int, str], message_id: int, 
-            reply_markup: Optional[REPLY_MARKUP_TYPES]=None) -> types.Poll:
+            reply_markup: Optional[types.InlineKeyboardMarkup]=None) -> types.Poll:
         """
         Use this method to stop a poll which was sent by the bot. On success, the stopped Poll is returned.
 
@@ -5059,7 +5074,7 @@ class AsyncTeleBot:
         :type message_id: :obj:`int`
 
         :param reply_markup: A JSON-serialized object for a new message markup.
-        :type reply_markup: :obj:`InlineKeyboardMarkup` | :obj:`ReplyKeyboardMarkup` | :obj:`ReplyKeyboardRemove` | :obj:`ForceReply`
+        :type reply_markup: :obj:`InlineKeyboardMarkup`
 
         :return: On success, the stopped Poll is returned.
         :rtype: :obj:`types.Poll`
@@ -5128,7 +5143,7 @@ class AsyncTeleBot:
             inline_message_id: Optional[str]=None,
             parse_mode: Optional[str]=None, 
             caption_entities: Optional[List[types.MessageEntity]]=None,
-            reply_markup: Optional[REPLY_MARKUP_TYPES]=None) -> Union[types.Message, bool]:
+            reply_markup: Optional[types.InlineKeyboardMarkup]=None) -> Union[types.Message, bool]:
         """
         Use this method to edit captions of messages.
 
@@ -5502,8 +5517,8 @@ class AsyncTeleBot:
 
     async def edit_forum_topic(
             self, chat_id: Union[int, str],
-            message_thread_id: int, name: str,
-            icon_custom_emoji_id: str,
+            message_thread_id: int, name: Optional[str]=None,
+            icon_custom_emoji_id: Optional[str]=None
         ) -> bool:
         """
         Use this method to edit name and icon of a topic in a forum supergroup chat. The bot must be an
@@ -5518,10 +5533,13 @@ class AsyncTeleBot:
         :param message_thread_id: Identifier of the topic to edit
         :type message_thread_id: :obj:`int`
 
-        :param name: New name of the topic, 1-128 characters
+        :param name: Optional, New name of the topic, 1-128 characters. If not specififed or empty,
+            the current name of the topic will be kept
         :type name: :obj:`str`
 
-        :param icon_custom_emoji_id: New custom emoji for the topic icon. Must be an emoji of type “tgs” and must be exactly 1 character long
+        :param icon_custom_emoji_id: Optional, New unique identifier of the custom emoji shown as the topic icon.
+            Use getForumTopicIconStickers to get all allowed custom emoji identifiers. Pass an empty string to remove the
+            icon. If not specified, the current icon will be kept
         :type icon_custom_emoji_id: :obj:`str`
 
         :return: On success, True is returned.
@@ -5604,6 +5622,75 @@ class AsyncTeleBot:
         :rtype: :obj:`bool`
         """
         return await asyncio_helper.unpin_all_forum_topic_messages(self.token, chat_id, message_thread_id)
+
+    async def edit_general_forum_topic(self, chat_id: Union[int, str], name: str) -> bool:
+        """
+        Use this method to edit the name of the 'General' topic in a forum supergroup chat.
+        The bot must be an administrator in the chat for this to work and must have can_manage_topics administrator rights.
+        Returns True on success.
+        
+        Telegram documentation: https://core.telegram.org/bots/api#editgeneralforumtopic
+        
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+
+        :param name: New topic name, 1-128 characters
+        :type name: :obj:`str`
+        """
+
+        return await asyncio_helper.edit_general_forum_topic(self.token, chat_id, name)
+
+    async def close_general_forum_topic(self, chat_id: Union[int, str]) -> bool:
+        """
+        Use this method to close the 'General' topic in a forum supergroup chat.
+        The bot must be an administrator in the chat for this to work and must have can_manage_topics administrator rights.
+        Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#closegeneralforumtopic
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+        """
+        return await asyncio_helper.close_general_forum_topic(self.token, chat_id)
+
+    async def reopen_general_forum_topic(self, chat_id: Union[int, str]) -> bool:
+        """
+        Use this method to reopen the 'General' topic in a forum supergroup chat.
+        The bot must be an administrator in the chat for this to work and must have can_manage_topics administrator rights.
+        Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#reopengeneralforumtopic
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+        """
+        return await asyncio_helper.reopen_general_forum_topic(self.token, chat_id)
+
+    async def hide_general_forum_topic(self, chat_id: Union[int, str]) -> bool:
+        """
+        Use this method to hide the 'General' topic in a forum supergroup chat.
+        The bot must be an administrator in the chat for this to work and must have can_manage_topics administrator rights.
+        Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#hidegeneralforumtopic
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+        """
+        return await asyncio_helper.hide_general_forum_topic(self.token, chat_id)
+
+    async def unhide_general_forum_topic(self, chat_id: Union[int, str]) -> bool:
+        """
+        Use this method to unhide the 'General' topic in a forum supergroup chat.
+        The bot must be an administrator in the chat for this to work and must have can_manage_topics administrator rights.
+        Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#unhidegeneralforumtopic
+
+        :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+        :type chat_id: :obj:`int` or :obj:`str`
+        """
+        return await asyncio_helper.unhide_general_forum_topic(self.token, chat_id)
 
     async def get_forum_topic_icon_stickers(self) -> List[types.Sticker]:
         """
