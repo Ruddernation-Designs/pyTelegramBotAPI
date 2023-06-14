@@ -2,7 +2,6 @@
 [![PyPi Package Version](https://img.shields.io/pypi/v/pyTelegramBotAPI.svg)](https://pypi.python.org/pypi/pyTelegramBotAPI)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/pyTelegramBotAPI.svg)](https://pypi.python.org/pypi/pyTelegramBotAPI)
 [![Documentation Status](https://readthedocs.org/projects/pytba/badge/?version=latest)](https://pytba.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://travis-ci.org/eternnoir/pyTelegramBotAPI.svg?branch=master)](https://travis-ci.org/eternnoir/pyTelegramBotAPI)
 [![PyPi downloads](https://img.shields.io/pypi/dm/pyTelegramBotAPI.svg)](https://pypi.org/project/pyTelegramBotAPI/)
 [![PyPi status](https://img.shields.io/pypi/status/pytelegrambotapi.svg?style=flat-square)](https://pypi.python.org/pypi/pytelegrambotapi)
 
@@ -11,7 +10,7 @@
 <p align="center">A simple, but extensible Python implementation for the <a href="https://core.telegram.org/bots/api">Telegram Bot API</a>.</p>
 <p align="center">Both synchronous and asynchronous.</p>
 
-## <p align="center">Supported Bot API version: <a href="https://core.telegram.org/bots/api#december-30-2022">6.4</a>!
+## <p align="center">Supported Bot API version: <a href="https://core.telegram.org/bots/api#april-21-2023">6.7</a>!
 
 <h2><a href='https://pytba.readthedocs.io/en/latest/index.html'>Official documentation</a></h2>
 <h2><a href='https://pytba.readthedocs.io/ru/latest/index.html'>Official ru documentation</a></h2>
@@ -266,7 +265,7 @@ def test_callback(call): # <- passes a CallbackQuery type object to your functio
 
 #### Shipping Query Handler
 Handle shipping queries
-`@bot.shipping_query_handeler() # <- passes a ShippingQuery type object to your function`
+`@bot.shipping_query_handler() # <- passes a ShippingQuery type object to your function`
 
 #### Pre Checkout Query Handler
 Handle pre checkoupt queries
@@ -888,5 +887,9 @@ Here are some examples of template:
 * [Feedback-bot](https://github.com/coder2020official/feedbackbot) A feedback bot for user-admin communication. Made on AsyncTeleBot, using [template](https://github.com/coder2020official/asynctelebot_template).
 * [TeleServ](https://github.com/ablakely/TeleServ) by [ablakely](https://github.com/ablakely) This is a Telegram to IRC bridge which links as an IRC server and makes Telegram users appear as native IRC users.
 * [Simple Store Bot](https://github.com/AntonGlyzin/myshopbot) by [Anton Glyzin](https://github.com/AntonGlyzin) This is a simple telegram-store with an admin panel. Designed according to a template.
+* [Media Rating Bot](https://t.me/mediaratingbot) ([source](https://github.com/CommanderCRM/MediaRatingBot))by [CommanderCRM](https://github.com/CommanderCRM). This bot aggregates media (movies, TV series, etc.) ratings from IMDb, Rotten Tomatoes, Metacritic, TheMovieDB, FilmAffinity and also provides number of votes of said media on IMDb. 
+* [Spot Seek Bot](https://t.me/SpotSeekBot) ([source](https://github.com/arashnm80/spot-seek-bot)) by [Arashnm80](https://github.com/arashnm80). This is a free & open source telegram bot for downloading tracks, albums or playlists from spotify.
+* [CalendarIT Bot](https://t.me/calendarit_bot) ([source](https://github.com/codebyzen/CalendarIT_Telegram_Bot))by [CodeByZen](https://github.com/codebyzen). A simple, but extensible Python Telegram bot, can post acquainted with what is happening today, tomorrow or what happened 20 years ago to channel. 
+* [DownloadMusicBOT](https://github.com/fcoagz/DownloadMusicBOT) by *Francisco Griman* - It is a simple bot that downloads audio from YouTube videos on Telegram.
 
 **Want to have your bot listed here? Just make a pull request. Only bots with public source code are accepted.**

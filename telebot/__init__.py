@@ -191,7 +191,7 @@ class TeleBot:
                 coloredlogs.install(logger=logger, level=logger.level)
             except ImportError:
                 raise ImportError(
-                    'Install colorredlogs module to use colorful_logs option.'
+                    'Install coloredlogs module to use colorful_logs option.'
                 )
 
         # threading-related
@@ -451,7 +451,7 @@ class TeleBot:
                     drop_pending_updates: Optional[bool] = None,
                     timeout: Optional[int]=None,
                     secret_token: Optional[str]=None,
-                    secret_token_length: Optional[int]=20,):
+                    secret_token_length: Optional[int]=20):
         """
         This class sets webhooks and listens to a given url and port.
 
@@ -1028,7 +1028,7 @@ class TeleBot:
         :return:
         """
         if none_stop is not None:
-            logger.warning("polling: none_stop parameter is deprecated. Use non_stop instead.")
+            logger.warning('The parameter "none_stop" is deprecated. Use "non_stop" instead.')
             non_stop = none_stop
 
         if skip_pending:
@@ -1837,11 +1837,12 @@ class TeleBot:
             parse_mode: Optional[str]=None, 
             disable_notification: Optional[bool]=None,
             timeout: Optional[int]=None, 
-            thumb: Optional[Union[Any, str]]=None,
+            thumbnail: Optional[Union[Any, str]]=None,
             caption_entities: Optional[List[types.MessageEntity]]=None,
             allow_sending_without_reply: Optional[bool]=None,
             protect_content: Optional[bool]=None,
-            message_thread_id: Optional[int]=None) -> types.Message:
+            message_thread_id: Optional[int]=None,
+            thumb: Optional[Union[Any, str]]=None,) -> types.Message:
         """
         Use this method to send audio files, if you want Telegram clients to display them in the music player.
         Your audio must be in the .MP3 or .M4A format. On success, the sent Message is returned. Bots can currently send audio files of up to 50 MB in size,
@@ -1887,11 +1888,11 @@ class TeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
-        :param thumb: Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side.
+        :param thumbnail: Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side.
             The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail's width and height should not exceed 320.
             Ignored if the file is not uploaded using multipart/form-data. Thumbnails can't be reused and can be only uploaded as a new file,
             so you can pass “attach://<file_attach_name>” if the thumbnail was uploaded using multipart/form-data under <file_attach_name>
-        :type thumb: :obj:`str`
+        :type thumbnail: :obj:`str` or :class:`telebot.types.InputFile`
 
         :param caption_entities: A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode
         :type caption_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
@@ -1905,6 +1906,9 @@ class TeleBot:
         :param message_thread_id: Identifier of a message thread, in which the message will be sent
         :type message_thread_id: :obj:`int`
 
+        :param thumb: Deprecated. Use thumbnail instead
+        :type thumb: :obj:`str` or :class:`telebot.types.InputFile`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -1913,10 +1917,14 @@ class TeleBot:
         protect_content = self.protect_content if (protect_content is None) else protect_content
         allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
 
+        if thumb is not None and thumbnail is None:
+            thumbnail = thumb
+            logger.warning('The parameter "thumb" is deprecated. Use "thumbnail" instead.')
+
         return types.Message.de_json(
             apihelper.send_audio(
                 self.token, chat_id, audio, caption, duration, performer, title, reply_to_message_id,
-                reply_markup, parse_mode, disable_notification, timeout, thumb,
+                reply_markup, parse_mode, disable_notification, timeout, thumbnail,
                 caption_entities, allow_sending_without_reply, protect_content, message_thread_id))
 
     # TODO: Rewrite this method like in API.
@@ -2003,13 +2011,14 @@ class TeleBot:
             parse_mode: Optional[str]=None, 
             disable_notification: Optional[bool]=None, 
             timeout: Optional[int]=None, 
-            thumb: Optional[Union[Any, str]]=None,
+            thumbnail: Optional[Union[Any, str]]=None,
             caption_entities: Optional[List[types.MessageEntity]]=None,
             allow_sending_without_reply: Optional[bool]=None,
             visible_file_name: Optional[str]=None,
             disable_content_type_detection: Optional[bool]=None,
             data: Optional[Union[Any, str]]=None,
-            protect_content: Optional[bool]=None, message_thread_id: Optional[int]=None) -> types.Message:
+            protect_content: Optional[bool]=None, message_thread_id: Optional[int]=None,
+            thumb: Optional[Union[Any, str]]=None,) -> types.Message:
         """
         Use this method to send general files.
 
@@ -2042,8 +2051,8 @@ class TeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
-        :param thumb: InputFile or String : Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side. The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail's width and height should not exceed 320. Ignored if the file is not uploaded using multipart/form-data. Thumbnails can't be reused and can be only uploaded as a new file, so you can pass “attach://<file_attach_name>” if the thumbnail was uploaded using multipart/form-data under <file_attach_name>
-        :type thumb: :obj:`str` or :class:`telebot.types.InputFile`
+        :param thumbnail: InputFile or String : Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side. The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail's width and height should not exceed 320. Ignored if the file is not uploaded using multipart/form-data. Thumbnails can't be reused and can be only uploaded as a new file, so you can pass “attach://<file_attach_name>” if the thumbnail was uploaded using multipart/form-data under <file_attach_name>
+        :type thumbnail: :obj:`str` or :class:`telebot.types.InputFile`
 
         :param caption_entities: A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode
         :type caption_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
@@ -2066,6 +2075,9 @@ class TeleBot:
         :param message_thread_id: The thread to which the message will be sent
         :type message_thread_id: :obj:`int`
 
+        :param thumb: Deprecated. Use thumbnail instead
+        :type thumb: :obj:`str` or :class:`telebot.types.InputFile`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2076,13 +2088,18 @@ class TeleBot:
 
         if data and not(document):
             # function typo miss compatibility
+            logger.warning('The parameter "data" is deprecated. Use "document" instead.')
             document = data
+
+        if thumb is not None and thumbnail is None:
+            thumbnail = thumb
+            logger.warning('The parameter "thumb" is deprecated. Use "thumbnail" instead.')
 
         return types.Message.de_json(
             apihelper.send_data(
                 self.token, chat_id, document, 'document',
                 reply_to_message_id = reply_to_message_id, reply_markup = reply_markup, parse_mode = parse_mode,
-                disable_notification = disable_notification, timeout = timeout, caption = caption, thumb = thumb,
+                disable_notification = disable_notification, timeout = timeout, caption = caption, thumbnail= thumbnail,
                 caption_entities = caption_entities, allow_sending_without_reply = allow_sending_without_reply,
                 disable_content_type_detection = disable_content_type_detection, visible_file_name = visible_file_name,
                 protect_content = protect_content, message_thread_id = message_thread_id))
@@ -2099,7 +2116,8 @@ class TeleBot:
             allow_sending_without_reply: Optional[bool]=None,
             protect_content:Optional[bool]=None,
             data: Union[Any, str]=None,
-            message_thread_id: Optional[int]=None) -> types.Message:
+            message_thread_id: Optional[int]=None,
+            emoji: Optional[str]=None) -> types.Message:
         """
         Use this method to send static .WEBP, animated .TGS, or video .WEBM stickers.
         On success, the sent Message is returned.
@@ -2139,6 +2157,9 @@ class TeleBot:
         :param message_thread_id: The thread to which the message will be sent
         :type message_thread_id: :obj:`int`
 
+        :param emoji: Emoji associated with the sticker; only for just uploaded stickers
+        :type emoji: :obj:`str`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2148,6 +2169,7 @@ class TeleBot:
 
         if data and not(sticker):
             # function typo miss compatibility
+            logger.warning('The parameter "data" is deprecated. Use "sticker" instead.')
             sticker = data
 
         return types.Message.de_json(
@@ -2156,14 +2178,14 @@ class TeleBot:
                 reply_to_message_id=reply_to_message_id, reply_markup=reply_markup,
                 disable_notification=disable_notification, timeout=timeout, 
                 allow_sending_without_reply=allow_sending_without_reply,
-                protect_content=protect_content, message_thread_id=message_thread_id))
+                protect_content=protect_content, message_thread_id=message_thread_id, emoji=emoji))
 
     def send_video(
             self, chat_id: Union[int, str], video: Union[Any, str], 
             duration: Optional[int]=None,
             width: Optional[int]=None,
             height: Optional[int]=None,
-            thumb: Optional[Union[Any, str]]=None, 
+            thumbnail: Optional[Union[Any, str]]=None, 
             caption: Optional[str]=None, 
             parse_mode: Optional[str]=None, 
             caption_entities: Optional[List[types.MessageEntity]]=None,
@@ -2176,7 +2198,8 @@ class TeleBot:
             timeout: Optional[int]=None,
             data: Optional[Union[Any, str]]=None,
             message_thread_id: Optional[int]=None,
-            has_spoiler: Optional[bool]=None) -> types.Message:
+            has_spoiler: Optional[bool]=None,
+            thumb: Optional[Union[Any, str]]=None,) -> types.Message:
         """
         Use this method to send video files, Telegram clients support mp4 videos (other formats may be sent as Document).
         
@@ -2197,8 +2220,8 @@ class TeleBot:
         :param height: Video height
         :type height: :obj:`int`
 
-        :param thumb: Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side. The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail's width and height should not exceed 320. Ignored if the file is not uploaded using multipart/form-data. Thumbnails can't be reused and can be only uploaded as a new file, so you can pass “attach://<file_attach_name>” if the thumbnail was uploaded using multipart/form-data under <file_attach_name>.
-        :type thumb: :obj:`str` or :class:`telebot.types.InputFile`
+        :param thumbnail: Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side. The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail's width and height should not exceed 320. Ignored if the file is not uploaded using multipart/form-data. Thumbnails can't be reused and can be only uploaded as a new file, so you can pass “attach://<file_attach_name>” if the thumbnail was uploaded using multipart/form-data under <file_attach_name>.
+        :type thumbnail: :obj:`str` or :class:`telebot.types.InputFile`
         
         :param caption: Video caption (may also be used when resending videos by file_id), 0-1024 characters after entities parsing
         :type caption: :obj:`str`
@@ -2241,6 +2264,9 @@ class TeleBot:
         :param has_spoiler: Pass True, if the video should be sent as a spoiler
         :type has_spoiler: :obj:`bool`
 
+        :param thumb: Deprecated. Use thumbnail instead
+        :type thumb: :obj:`str` or :class:`telebot.types.InputFile`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2251,12 +2277,17 @@ class TeleBot:
 
         if data and not(video):
             # function typo miss compatibility
+            logger.warning('The parameter "data" is deprecated. Use "video" instead.')
             video = data
+
+        if thumb is not None and thumbnail is None:
+            thumbnail = thumb
+            logger.warning('The parameter "thumb" is deprecated. Use "thumbnail" instead.')
 
         return types.Message.de_json(
             apihelper.send_video(
                 self.token, chat_id, video, duration, caption, reply_to_message_id, reply_markup,
-                parse_mode, supports_streaming, disable_notification, timeout, thumb, width, height,
+                parse_mode, supports_streaming, disable_notification, timeout, thumbnail, width, height,
                 caption_entities, allow_sending_without_reply, protect_content, message_thread_id, has_spoiler))
 
     def send_animation(
@@ -2264,7 +2295,7 @@ class TeleBot:
             duration: Optional[int]=None,
             width: Optional[int]=None,
             height: Optional[int]=None,
-            thumb: Optional[Union[Any, str]]=None,
+            thumbnail: Optional[Union[Any, str]]=None,
             caption: Optional[str]=None, 
             parse_mode: Optional[str]=None,
             caption_entities: Optional[List[types.MessageEntity]]=None,
@@ -2275,7 +2306,8 @@ class TeleBot:
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             timeout: Optional[int]=None,
             message_thread_id: Optional[int]=None,
-            has_spoiler: Optional[bool]=None) -> types.Message:
+            has_spoiler: Optional[bool]=None,
+            thumb: Optional[Union[Any, str]]=None,) -> types.Message:
         """
         Use this method to send animation files (GIF or H.264/MPEG-4 AVC video without sound).
         On success, the sent Message is returned. Bots can currently send animation files of up to 50 MB in size, this limit may be changed in the future.
@@ -2298,11 +2330,11 @@ class TeleBot:
         :param height: Animation height
         :type height: :obj:`int`
         
-        :param thumb: Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side.
+        :param thumbnail: Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side.
             The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail's width and height should not exceed 320.
             Ignored if the file is not uploaded using multipart/form-data. Thumbnails can't be reused and can be only uploaded as a new file,
             so you can pass “attach://<file_attach_name>” if the thumbnail was uploaded using multipart/form-data under <file_attach_name>.
-        :type thumb: :obj:`str` or :class:`telebot.types.InputFile`
+        :type thumbnail: :obj:`str` or :class:`telebot.types.InputFile`
 
         :param caption: Animation caption (may also be used when resending animation by file_id), 0-1024 characters after entities parsing
         :type caption: :obj:`str`
@@ -2339,6 +2371,9 @@ class TeleBot:
         :param has_spoiler: Pass True, if the animation should be sent as a spoiler
         :type has_spoiler: :obj:`bool`
 
+        :param thumb: Deprecated. Use thumbnail instead
+        :type thumb: :obj:`str` or :class:`telebot.types.InputFile`
+
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2347,10 +2382,13 @@ class TeleBot:
         protect_content = self.protect_content if (protect_content is None) else protect_content
         allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
 
+        if thumbnail is None and thumb is not None:
+            thumbnail = thumb
+            logger.warning('The parameter "thumb" is deprecated. Use "thumbnail" instead.')
         return types.Message.de_json(
             apihelper.send_animation(
                 self.token, chat_id, animation, duration, caption, reply_to_message_id,
-                reply_markup, parse_mode, disable_notification, timeout, thumb,
+                reply_markup, parse_mode, disable_notification, timeout, thumbnail,
                 caption_entities, allow_sending_without_reply, protect_content, width, height, message_thread_id, has_spoiler))
 
     # TODO: Rewrite this method like in API.
@@ -2362,10 +2400,11 @@ class TeleBot:
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
             disable_notification: Optional[bool]=None, 
             timeout: Optional[int]=None, 
-            thumb: Optional[Union[Any, str]]=None,
+            thumbnail: Optional[Union[Any, str]]=None,
             allow_sending_without_reply: Optional[bool]=None,
             protect_content: Optional[bool]=None,
-            message_thread_id: Optional[int]=None) -> types.Message:
+            message_thread_id: Optional[int]=None,
+            thumb: Optional[Union[Any, str]]=None) -> types.Message:
         """
         As of v.4.0, Telegram clients support rounded square MPEG4 videos of up to 1 minute long.
         Use this method to send video messages. On success, the sent Message is returned.
@@ -2399,11 +2438,11 @@ class TeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
-        :param thumb: Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side.
+        :param thumbnail: Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side.
             The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail's width and height should not exceed 320.
             Ignored if the file is not uploaded using multipart/form-data. Thumbnails can't be reused and can be only uploaded as a new file,
             so you can pass “attach://<file_attach_name>” if the thumbnail was uploaded using multipart/form-data under <file_attach_name>. 
-        :type thumb: :obj:`str` or :class:`telebot.types.InputFile`
+        :type thumbnail: :obj:`str` or :class:`telebot.types.InputFile`
 
         :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
@@ -2414,6 +2453,8 @@ class TeleBot:
         :param message_thread_id: Identifier of a message thread, in which the video note will be sent
         :type message_thread_id: :obj:`int`
 
+        :param thumb: Deprecated. Use thumbnail instead
+    :type thumb: :obj:`str` or :class:`telebot.types.InputFile`
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
@@ -2421,10 +2462,14 @@ class TeleBot:
         protect_content = self.protect_content if (protect_content is None) else protect_content
         allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
 
+        if thumbnail is None and thumb is not None:
+            thumbnail = thumb
+            logger.warning('The parameter "thumb" is deprecated. Use "thumbnail" instead.')
+
         return types.Message.de_json(
             apihelper.send_video_note(
                 self.token, chat_id, data, duration, length, reply_to_message_id, reply_markup,
-                disable_notification, timeout, thumb, allow_sending_without_reply, protect_content, message_thread_id))
+                disable_notification, timeout, thumbnail, allow_sending_without_reply, protect_content, message_thread_id))
 
 
     def send_media_group(
@@ -2917,13 +2962,18 @@ class TeleBot:
             can_add_web_page_previews: Optional[bool]=None, 
             can_change_info: Optional[bool]=None,
             can_invite_users: Optional[bool]=None, 
-            can_pin_messages: Optional[bool]=None) -> bool:
+            can_pin_messages: Optional[bool]=None,
+            permissions: Optional[types.ChatPermissions]=None,
+            use_independent_chat_permissions: Optional[bool]=None) -> bool:
         """
         Use this method to restrict a user in a supergroup.
         The bot must be an administrator in the supergroup for this to work and must have
         the appropriate admin rights. Pass True for all boolean parameters to lift restrictions from a user.
 
         Telegram documentation: https://core.telegram.org/bots/api#restrictchatmember
+
+        .. warning::
+            Individual parameters are deprecated and will be removed, use 'permissions' instead.
 
         :param chat_id: Unique identifier for the target group or username of the target supergroup
             or channel (in the format @channelusername)
@@ -2965,15 +3015,34 @@ class TeleBot:
         :param can_pin_messages: Pass True, if the user is allowed to pin messages. Ignored in public supergroups
         :type can_pin_messages: :obj:`bool`
 
+        :param use_independent_chat_permissions: Pass True if chat permissions are set independently. Otherwise,
+            the can_send_other_messages and can_add_web_page_previews permissions will imply the can_send_messages,
+            can_send_audios, can_send_documents, can_send_photos, can_send_videos, can_send_video_notes, and
+            can_send_voice_notes permissions; the can_send_polls permission will imply the can_send_messages permission.
+        :type use_independent_chat_permissions: :obj:`bool`
+
+        :param permissions: Pass ChatPermissions object to set all permissions at once. Use this param instead of
+            passing all boolean parameters.
+        :type permissions: :class:`telebot.types.ChatPermissions`
+
         :return: True on success
         :rtype: :obj:`bool`
         """
+
+        if permissions is None:
+            permissions = types.ChatPermissions(
+                can_send_messages=can_send_messages,
+                can_send_media_messages=can_send_media_messages,
+                can_send_polls=can_send_polls,
+                can_send_other_messages=can_send_other_messages,
+                can_add_web_page_previews=can_add_web_page_previews,
+                can_change_info=can_change_info,
+                can_invite_users=can_invite_users,
+                can_pin_messages=can_pin_messages
+            )
+            logger.warning('The parameters "can_..." are deprecated, use "permissions" instead.')
         return apihelper.restrict_chat_member(
-            self.token, chat_id, user_id, until_date,
-            can_send_messages, can_send_media_messages,
-            can_send_polls, can_send_other_messages,
-            can_add_web_page_previews, can_change_info,
-            can_invite_users, can_pin_messages)
+            self.token, chat_id, user_id, permissions, until_date, use_independent_chat_permissions)
 
     def promote_chat_member(
             self, chat_id: Union[int, str], user_id: int,
@@ -3054,7 +3123,7 @@ class TeleBot:
         :rtype: :obj:`bool`
         """
         if can_manage_voice_chats is not None:
-            logger.warning("promote_chat_member: can_manage_voice_chats parameter is deprecated. Use can_manage_video_chats instead.")
+            logger.warning('The parameter "can_manage_voice_chats" is deprecated. Use "can_manage_video_chats" instead.')
             if can_manage_video_chats is None:
                 can_manage_video_chats = can_manage_voice_chats
 
@@ -3131,7 +3200,8 @@ class TeleBot:
         return apihelper.unban_chat_sender_chat(self.token, chat_id, sender_chat_id)
 
     def set_chat_permissions(
-            self, chat_id: Union[int, str], permissions: types.ChatPermissions) -> bool:
+            self, chat_id: Union[int, str], permissions: types.ChatPermissions,
+            use_independent_chat_permissions: Optional[bool]=None) -> bool:
         """
         Use this method to set default chat permissions for all members.
         The bot must be an administrator in the group or a supergroup for this to work
@@ -3146,10 +3216,16 @@ class TeleBot:
         :param permissions: New default chat permissions
         :type permissions: :class:`telebot.types..ChatPermissions`
 
+        :param use_independent_chat_permissions: Pass True if chat permissions are set independently. Otherwise,
+            the can_send_other_messages and can_add_web_page_previews permissions will imply the can_send_messages,
+            can_send_audios, can_send_documents, can_send_photos, can_send_videos, can_send_video_notes, and
+            can_send_voice_notes permissions; the can_send_polls permission will imply the can_send_messages permission.
+        :type use_independent_chat_permissions: :obj:`bool`
+
         :return: True on success
         :rtype: :obj:`bool`
         """
-        return apihelper.set_chat_permissions(self.token, chat_id, permissions)
+        return apihelper.set_chat_permissions(self.token, chat_id, permissions, use_independent_chat_permissions)
 
     def create_chat_invite_link(
             self, chat_id: Union[int, str],
@@ -3224,7 +3300,7 @@ class TeleBot:
         :rtype: :class:`telebot.types.ChatInviteLink`
         """
         return types.ChatInviteLink.de_json(
-            apihelper.edit_chat_invite_link(self.token, chat_id, name, invite_link, expire_date, member_limit, creates_join_request)
+            apihelper.edit_chat_invite_link(self.token, chat_id, invite_link, name, expire_date, member_limit, creates_join_request)
         )
 
     def revoke_chat_invite_link(
@@ -3367,6 +3443,110 @@ class TeleBot:
         """
         result = apihelper.get_my_commands(self.token, scope, language_code)
         return [types.BotCommand.de_json(cmd) for cmd in result]
+
+    def set_my_name(self, name: Optional[str]=None, language_code: Optional[str]=None):
+        """
+        Use this method to change the bot's name. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#setmyname
+
+        :param name: Optional. New bot name; 0-64 characters. Pass an empty string to remove the dedicated name for the given language.
+        :type name: :obj:`str`
+
+        :param language_code: Optional. A two-letter ISO 639-1 language code. If empty, the name will be shown to all users for whose
+            language there is no dedicated name.
+        :type language_code: :obj:`str`
+
+        :return: True on success.
+        """
+
+        return apihelper.set_my_name(self.token, name, language_code)
+    
+    def get_my_name(self, language_code: Optional[str]=None):
+        """
+        Use this method to get the current bot name for the given user language.
+        Returns BotName on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#getmyname
+
+        :param language_code: Optional. A two-letter ISO 639-1 language code or an empty string
+        :type language_code: :obj:`str`
+
+        :return: :class:`telebot.types.BotName`
+        """
+
+        result = apihelper.get_my_name(self.token, language_code)
+        return types.BotName.de_json(result)
+    
+    def set_my_description(self, description: Optional[str]=None, language_code: Optional[str]=None):
+        """
+        Use this method to change the bot's description, which is shown in
+        the chat with the bot if the chat is empty.
+        Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#setmydescription
+
+        :param description: New bot description; 0-512 characters. Pass an empty string to remove the dedicated description for the given language.
+        :type description: :obj:`str`
+
+        :param language_code: A two-letter ISO 639-1 language code. If empty, the description will be applied to all users for
+            whose language there is no dedicated description.
+        :type language_code: :obj:`str`
+
+        :return: True on success.
+        """
+
+        return apihelper.set_my_description(self.token, description, language_code)
+    
+    def get_my_description(self, language_code: Optional[str]=None):
+        """
+        Use this method to get the current bot description for the given user language.
+        Returns BotDescription on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#getmydescription
+
+        :param language_code: A two-letter ISO 639-1 language code or an empty string
+        :type language_code: :obj:`str`
+
+        :return: :class:`telebot.types.BotDescription`
+        """
+            
+        return types.BotDescription.de_json(apihelper.get_my_description(self.token, language_code))
+    
+    def set_my_short_description(self, short_description:Optional[str]=None, language_code:Optional[str]=None):
+        """
+        Use this method to change the bot's short description, which is shown on the bot's profile page and
+        is sent together with the link when users share the bot. 
+        Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#setmyshortdescription
+
+        :param short_description: New short description for the bot; 0-120 characters. Pass an empty string to remove the dedicated short description for the given language.
+        :type short_description: :obj:`str`
+
+        :param language_code: A two-letter ISO 639-1 language code.
+            If empty, the short description will be applied to all users for whose language there is no dedicated short description.
+        :type language_code: :obj:`str`
+
+        :return: True on success.
+        """
+
+        return apihelper.set_my_short_description(self.token, short_description, language_code)
+    
+    def get_my_short_description(self, language_code: Optional[str]=None):
+        """
+        Use this method to get the current bot short description for the given user language.
+        Returns BotShortDescription on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#getmyshortdescription
+
+        :param language_code: A two-letter ISO 639-1 language code or an empty string
+        :type language_code: :obj:`str`
+
+        :return: :class:`telebot.types.BotShortDescription`
+        """
+            
+        return types.BotShortDescription.de_json(apihelper.get_my_short_description(self.token, language_code))
 
     def set_chat_menu_button(self, chat_id: Union[int, str]=None, 
                 menu_button: types.MenuButton=None) -> bool:
@@ -4341,7 +4521,8 @@ class TeleBot:
             is_personal: Optional[bool]=None, 
             next_offset: Optional[str]=None,
             switch_pm_text: Optional[str]=None, 
-            switch_pm_parameter: Optional[str]=None) -> bool:
+            switch_pm_parameter: Optional[str]=None,
+            button: Optional[types.InlineQueryResultsButton]=None) -> bool:
         """
         Use this method to send answers to an inline query. On success, True is returned.
         No more than 50 results per query are allowed.
@@ -4377,11 +4558,18 @@ class TeleBot:
         :param switch_pm_text: Parameter for the start message sent to the bot when user presses the switch button
         :type switch_pm_text: :obj:`str`
 
+        :param button: A JSON-serialized object describing a button to be shown above inline query results
+        :type button: :obj:`types.InlineQueryResultsButton`
+
         :return: On success, True is returned.
         :rtype: :obj:`bool`
         """
+        if not button and (switch_pm_text or switch_pm_parameter):
+            logger.warning("switch_pm_text and switch_pm_parameter are deprecated for answer_inline_query. Use button instead.")
+            button = types.InlineQueryResultsButton(text=switch_pm_text, start_parameter=switch_pm_parameter)
+        
         return apihelper.answer_inline_query(self.token, inline_query_id, results, cache_time, is_personal, next_offset,
-                                             switch_pm_text, switch_pm_parameter)
+                                             button)
 
     def answer_callback_query(
             self, callback_query_id: int, 
@@ -4414,8 +4602,30 @@ class TeleBot:
         """
         return apihelper.answer_callback_query(self.token, callback_query_id, text, show_alert, url, cache_time)
 
-    def set_sticker_set_thumb(
-            self, name: str, user_id: int, thumb: Union[Any, str]=None):
+    def set_sticker_set_thumbnail(self, name: str, user_id: int, thumbnail: Union[Any, str]=None):
+        """
+        Use this method to set the thumbnail of a sticker set. 
+        Animated thumbnails can be set for animated sticker sets only. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#setstickersetthumb
+
+        :param name: Sticker set name
+        :type name: :obj:`str`
+
+        :param user_id: User identifier
+        :type user_id: :obj:`int`
+
+        :param thumbnail: A .WEBP or .PNG image with the thumbnail, must be up to 128 kilobytes in size and have a width and height of exactly 100px, or a .TGS animation with a thumbnail up to 32 kilobytes in size (see https://core.telegram.org/stickers#animated-sticker-requirements for animated sticker technical requirements), or a WEBM video with the thumbnail up to 32 kilobytes in size; see https://core.telegram.org/stickers#video-sticker-requirements for video sticker technical requirements. Pass a file_id as a String to send a file that already exists on the Telegram servers, pass an HTTP URL as a String for Telegram to get a file from the Internet, or upload a new one using multipart/form-data. More information on Sending Files ». Animated and video sticker set thumbnails can't be uploaded via HTTP URL. If omitted, then the thumbnail is dropped and the first sticker is used as the thumbnail.
+        :type thumbnail: :obj:`filelike object`
+
+        :return: On success, True is returned.
+        :rtype: :obj:`bool`
+        """
+
+        return apihelper.set_sticker_set_thumbnail(self.token, name, user_id, thumbnail)
+    
+    @util.deprecated(deprecation_text="Use set_sticker_set_thumbnail instead")
+    def set_sticker_set_thumb(self, name: str, user_id: int, thumb: Union[Any, str]=None):
         """
         Use this method to set the thumbnail of a sticker set. 
         Animated thumbnails can be set for animated sticker sets only. Returns True on success.
@@ -4434,7 +4644,8 @@ class TeleBot:
         :return: On success, True is returned.
         :rtype: :obj:`bool`
         """
-        return apihelper.set_sticker_set_thumb(self.token, name, user_id, thumb)
+        # deprecated
+        return self.set_sticker_set_thumbnail(name, user_id, thumb)
 
     def get_sticker_set(self, name: str) -> types.StickerSet:
         """
@@ -4464,8 +4675,107 @@ class TeleBot:
         """
         result = apihelper.get_custom_emoji_stickers(self.token, custom_emoji_ids)
         return [types.Sticker.de_json(sticker) for sticker in result]
+    
+    def set_sticker_keywords(self, sticker: str, keywords: List[str]=None) -> bool:
+        """
+        Use this method to change search keywords assigned to a regular or custom emoji sticker.
+        The sticker must belong to a sticker set created by the bot.
+        Returns True on success.
 
-    def upload_sticker_file(self, user_id: int, png_sticker: Union[Any, str]) -> types.File:
+        :param sticker: File identifier of the sticker.
+        :type sticker: :obj:`str`
+
+        :param keywords: A JSON-serialized list of 0-20 search keywords for the sticker with total length of up to 64 characters
+        :type keywords: :obj:`list` of :obj:`str`
+
+        :return: On success, True is returned.
+        :rtype: :obj:`bool`
+        """
+        return apihelper.set_sticker_keywords(self.token, sticker, keywords)
+    
+    def set_sticker_mask_position(self, sticker: str, mask_position: types.MaskPosition=None) -> bool:
+        """
+        Use this method to change the mask position of a mask sticker.
+        The sticker must belong to a sticker set that was created by the bot.
+        Returns True on success.
+
+        :param sticker: File identifier of the sticker.
+        :type sticker: :obj:`str`
+
+        :param mask_position: A JSON-serialized object for position where the mask should be placed on faces.
+        :type mask_position: :class:`telebot.types.MaskPosition`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return apihelper.set_sticker_mask_position(self.token, sticker, mask_position)
+    
+
+    def set_custom_emoji_sticker_set_thumbnail(self, name: str, custom_emoji_id: Optional[str]=None) -> bool:
+        """
+        Use this method to set the thumbnail of a custom emoji sticker set.
+        Returns True on success.
+
+        :param name: Sticker set name
+        :type name: :obj:`str`
+
+        :param custom_emoji_id: Custom emoji identifier of a sticker from the sticker set; pass an empty string to drop the thumbnail and use the first sticker as the thumbnail.
+        :type custom_emoji_id: :obj:`str`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return apihelper.set_custom_emoji_sticker_set_thumbnail(self.token, name, custom_emoji_id)
+    
+    def set_sticker_set_title(self, name: str, title: str) -> bool:
+        """
+        Use this method to set the title of a created sticker set.
+        Returns True on success.
+
+        :param name: Sticker set name
+        :type name: :obj:`str`
+
+        :param title: New sticker set title
+        :type title: :obj:`str`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+
+        return apihelper.set_sticker_set_title(self.token, name, title)
+    
+    def delete_sticker_set(self, name:str) -> bool:
+        """
+        Use this method to delete a sticker set. Returns True on success.
+
+        :param name: Sticker set name
+        :type name: :obj:`str`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+
+        return apihelper.delete_sticker_set(self.token, name)
+    
+    def set_sticker_emoji_list(self, sticker: str, emoji_list: List[str]) -> bool:
+        """
+        Use this method to set the emoji list of a custom emoji sticker set.
+        Returns True on success.
+
+        :param sticker: Sticker identifier
+        :type sticker: :obj:`str`
+
+        :param emoji_list: List of emoji
+        :type emoji_list: :obj:`list` of :obj:`str`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+
+        return apihelper.set_sticker_emoji_list(self.token, sticker, emoji_list)
+
+
+    def upload_sticker_file(self, user_id: int, png_sticker: Union[Any, str]=None, sticker: Optional[types.InputFile]=None, sticker_format: Optional[str]=None) -> types.File:
         """
         Use this method to upload a .png file with a sticker for later use in createNewStickerSet and addStickerToSet
         methods (can be used multiple times). Returns the uploaded File on success.
@@ -4475,31 +4785,49 @@ class TeleBot:
         :param user_id: User identifier of sticker set owner
         :type user_id: :obj:`int`
 
-        :param png_sticker: PNG image with the sticker, must be up to 512 kilobytes in size, dimensions must not exceed 512px,
+        :param png_sticker: DEPRECATED: PNG image with the sticker, must be up to 512 kilobytes in size, dimensions must not exceed 512px,
             and either width or height must be exactly 512px.
         :type png_sticker: :obj:`filelike object`
+
+        :param sticker: A file with the sticker in .WEBP, .PNG, .TGS, or .WEBM format.
+            See https://core.telegram.org/stickers for technical requirements. More information on Sending Files »
+        :type sticker: :class:`telebot.types.InputFile`
+
+        :param sticker_format: One of "static", "animated", "video". 
+        :type sticker_format: :obj:`str`
 
         :return: On success, the sent file is returned.
         :rtype: :class:`telebot.types.File`
         """
-        result = apihelper.upload_sticker_file(self.token, user_id, png_sticker)
+        if png_sticker:
+            logger.warning('The parameter "png_sticker" is deprecated. Use "sticker" instead.')
+            sticker = png_sticker
+            sticker_format = "static"
+        
+        result = apihelper.upload_sticker_file(self.token, user_id, sticker, sticker_format)
         return types.File.de_json(result)
 
     def create_new_sticker_set(
             self, user_id: int, name: str, title: str, 
-            emojis: str, 
+            emojis: Optional[List[str]]=None, 
             png_sticker: Union[Any, str]=None, 
             tgs_sticker: Union[Any, str]=None, 
             webm_sticker: Union[Any, str]=None,
             contains_masks: Optional[bool]=None,
             sticker_type: Optional[str]=None,
-            mask_position: Optional[types.MaskPosition]=None) -> bool:
+            mask_position: Optional[types.MaskPosition]=None,
+            needs_repainting: Optional[bool]=None,
+            stickers: List[types.InputSticker]=None,
+            sticker_format: Optional[str]=None) -> bool:
         """
         Use this method to create new sticker set owned by a user. 
         The bot will be able to edit the created sticker set.
         Returns True on success.
 
         Telegram documentation: https://core.telegram.org/bots/api#createnewstickerset
+
+        .. note::
+            Fields *_sticker are deprecated, pass a list of stickers to stickers parameter instead.
 
         :param user_id: User identifier of created sticker set owner
         :type user_id: :obj:`int`
@@ -4530,37 +4858,68 @@ class TeleBot:
             use sticker_type instead.
         :type contains_masks: :obj:`bool`
 
-        :param sticker_type: Optional, Type of stickers in the set, pass “regular” or “mask”. Custom emoji sticker sets can't be created
-            via the Bot API at the moment. By default, a regular sticker set is created.
+        :param sticker_type: Type of stickers in the set, pass “regular”, “mask”, or “custom_emoji”. By default, a regular sticker set is created.
         :type sticker_type: :obj:`str`
 
         :param mask_position: A JSON-serialized object for position where the mask should be placed on faces
         :type mask_position: :class:`telebot.types.MaskPosition`
 
+        :param needs_repainting: Pass True if stickers in the sticker set must be repainted to the color of text when used in messages,
+            the accent color if used as emoji status, white on chat photos, or another appropriate color based on context;
+            for custom emoji sticker sets only
+        :type needs_repainting: :obj:`bool`
+
+        :param stickers: List of stickers to be added to the set
+        :type stickers: :obj:`list` of :class:`telebot.types.InputSticker`
+
+        :param sticker_format: Format of stickers in the set, must be one of “static”, “animated”, “video”
+        :type sticker_format: :obj:`str`
+
         :return: On success, True is returned.
         :rtype: :obj:`bool`
         """
+        if tgs_sticker:
+            sticker_format = 'animated'
+        elif webm_sticker:
+            sticker_format = 'video'
+        elif png_sticker:
+            sticker_format = 'static'
+        
         if contains_masks is not None:
             logger.warning('The parameter "contains_masks" is deprecated, use "sticker_type" instead')
             if sticker_type is None:
                sticker_type = 'mask' if contains_masks else 'regular'
 
+        if stickers is None:
+            stickers = png_sticker or tgs_sticker or webm_sticker
+            if stickers is None:
+                raise ValueError('You must pass at least one sticker')
+            stickers = [types.InputSticker(sticker=stickers, emoji_list=emojis, mask_position=mask_position)]
+            
+
+               
         return apihelper.create_new_sticker_set(
-            self.token, user_id, name, title, emojis, png_sticker, tgs_sticker, 
-            mask_position, webm_sticker, sticker_type)
+            self.token, user_id, name, title, stickers, sticker_format, sticker_type, needs_repainting)
+
 
     def add_sticker_to_set(
-            self, user_id: int, name: str, emojis: str,
+            self, user_id: int, name: str, emojis: Union[List[str], str],
             png_sticker: Optional[Union[Any, str]]=None, 
             tgs_sticker: Optional[Union[Any, str]]=None,  
             webm_sticker: Optional[Union[Any, str]]=None,
-            mask_position: Optional[types.MaskPosition]=None) -> bool:
+            mask_position: Optional[types.MaskPosition]=None,
+            sticker: Optional[List[types.InputSticker]]=None) -> bool:
         """
-        Use this method to add a new sticker to a set created by the bot. 
-        It's required to pass `png_sticker` or `tgs_sticker`.
+        Use this method to add a new sticker to a set created by the bot.
+        The format of the added sticker must match the format of the other stickers in the set.
+        Emoji sticker sets can have up to 200 stickers. Animated and video sticker sets can have up to 50 stickers.
+        Static sticker sets can have up to 120 stickers.
         Returns True on success.
 
         Telegram documentation: https://core.telegram.org/bots/api#addstickertoset
+
+        .. note::
+            **_sticker, mask_position, emojis parameters are deprecated, use stickers instead
 
         :param user_id: User identifier of created sticker set owner
         :type user_id: :obj:`int`
@@ -4585,11 +4944,27 @@ class TeleBot:
         :param mask_position: A JSON-serialized object for position where the mask should be placed on faces
         :type mask_position: :class:`telebot.types.MaskPosition`
 
+        :param sticker: A JSON-serialized list of 1-50 initial stickers to be added to the sticker set
+        :type sticker: :obj:`list` of :class:`telebot.types.InputSticker`
+
         :return: On success, True is returned.
         :rtype: :obj:`bool`
         """
+
+        # split emojis if string
+        if isinstance(emojis, str):
+            emojis = list(emojis)
+        # Replaced the parameters png_sticker, tgs_sticker, webm_sticker, emojis and mask_position
+        if sticker is None:
+            old_sticker = png_sticker or tgs_sticker or webm_sticker
+            if old_sticker is not None:
+                logger.warning('The parameters "..._sticker", "emojis" and "mask_position" are deprecated, use "sticker" instead')
+            if not old_sticker:
+                raise ValueError('You must pass at least one sticker.')
+            sticker = types.InputSticker(old_sticker, emojis, mask_position)
+
         return apihelper.add_sticker_to_set(
-            self.token, user_id, name, emojis, png_sticker, tgs_sticker, mask_position, webm_sticker)
+            self.token, user_id, name, sticker)
 
     def set_sticker_position_in_set(self, sticker: str, position: int) -> bool:
         """
@@ -6426,7 +6801,6 @@ class TeleBot:
                     if not process_handler: continue
                     for i in inspect.signature(handler['function']).parameters:
                         params.append(i)
-                    result = None
                     if len(params) == 1:
                         result = handler['function'](message)
                     elif "data" in params:

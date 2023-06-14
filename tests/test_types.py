@@ -67,9 +67,9 @@ def test_json_GroupChat():
 
 
 def test_json_Document():
-    json_string = r'{"file_name":"Text File","thumb":{},"file_id":"BQADBQADMwIAAsYifgZ_CEh0u682xwI","file_unique_id": "AgADJQEAAqfhOEY","file_size":446}'
+    json_string = r'{"file_name":"Text File","thumbnail":{},"file_id":"BQADBQADMwIAAsYifgZ_CEh0u682xwI","file_unique_id": "AgADJQEAAqfhOEY","file_size":446}'
     doc = types.Document.de_json(json_string)
-    assert doc.thumb is None
+    assert doc.thumbnail is None
     assert doc.file_name == 'Text File'
 
 
@@ -83,23 +83,23 @@ def test_json_Message_Audio():
 
 
 def test_json_Message_Sticker():
-    json_string = r'{"message_id": 21552, "from": {"id": 590740002, "is_bot": false, "first_name": "⚜️ Ƥυrуα ⚜️", "username": "Purya", "language_code": "en"}, "chat": {"id": -1001309982000, "title": "123", "type": "supergroup"}, "date": 1594068909, "sticker": {"type": "regular", "width": 368, "height": 368, "emoji": "🤖", "set_name": "ipuryapack", "is_animated": false, "is_video": true, "thumb": {"file_id": "AAMCBAADHQJOFL7mAAJUMF8Dj62hpmDhpRAYvkc8CtIqipolAAJ8AAPA-8cF9yxjgjkLS97A0D4iXQARtQAHbQADHy4AAhoE", "file_unique_id": "AQADwNA-Il0AAx8uAAI", "file_size": 7776, "width": 60, "height": 60}, "file_id": "CAACAgQAAx0CThS-5gACVDBfA4-toaZg4aUQGL5HWerSKoqaJQACArADwPvHBfcsY4I5C3feGgQ", "file_unique_id": "AgADfAADsPvHWQ", "file_size": 14602}}'
+    json_string = r'{"message_id": 21552, "from": {"id": 590740002, "is_bot": false, "first_name": "⚜️ Ƥυrуα ⚜️", "username": "Purya", "language_code": "en"}, "chat": {"id": -1001309982000, "title": "123", "type": "supergroup"}, "date": 1594068909, "sticker": {"type": "regular", "width": 368, "height": 368, "emoji": "🤖", "set_name": "ipuryapack", "is_animated": false, "is_video": true, "thumbnail": {"file_id": "AAMCBAADHQJOFL7mAAJUMF8Dj62hpmDhpRAYvkc8CtIqipolAAJ8AAPA-8cF9yxjgjkLS97A0D4iXQARtQAHbQADHy4AAhoE", "file_unique_id": "AQADwNA-Il0AAx8uAAI", "file_size": 7776, "width": 60, "height": 60}, "file_id": "CAACAgQAAx0CThS-5gACVDBfA4-toaZg4aUQGL5HWerSKoqaJQACArADwPvHBfcsY4I5C3feGgQ", "file_unique_id": "AgADfAADsPvHWQ", "file_size": 14602}}'
     msg = types.Message.de_json(json_string)
     assert msg.sticker.height == 368
-    assert msg.sticker.thumb.height == 60
+    assert msg.sticker.thumbnail.height == 60
     assert msg.content_type == 'sticker'
 
 
-def test_json_Message_Sticker_without_thumb():
+def test_json_Message_Sticker_without_thumbnail():
     json_string = r'{"message_id": 21552, "from": {"id": 590740002, "is_bot": false, "first_name": "⚜️ Ƥυrуα ⚜️", "username": "Purya", "language_code": "en"}, "chat": {"id": -1001309982000, "title": "123", "type": "supergroup"}, "date": 1594068909, "sticker": {"type": "regular", "width": 368, "height": 368, "emoji": "🤖", "set_name": "ipuryapack", "is_animated": false, "is_video": true, "file_id": "CAACAgQAAx0CThS-5gACVDBfA4-toaZg4aUQGL5HWerSKoqaJQACArADwPvHBfcsY4I5C3feGgQ", "file_unique_id": "AgADfAADsPvHWQ", "file_size": 14602}}'
     msg = types.Message.de_json(json_string)
     assert msg.sticker.height == 368
-    assert msg.sticker.thumb is None
+    assert msg.sticker.thumbnail is None
     assert msg.content_type == 'sticker'
 
 
 def test_json_Message_Document():
-    json_string = r'{"message_id":97,"from":{"id":10734,"first_name":"Fd","last_name":"Wd","username":"dd","is_bot":true },"chat":{"id":10,"first_name":"Fd","type":"private","last_name":"Wd","username":"dd"},"date":1435478744,"document":{"file_name":"Text File","thumb":{},"file_id":"BQADBQADMwIAAsYifgZ_CEh0u682xwI","file_unique_id": "AQAD_QIfa3QAAyA4BgAB","file_size":446}}'
+    json_string = r'{"message_id":97,"from":{"id":10734,"first_name":"Fd","last_name":"Wd","username":"dd","is_bot":true },"chat":{"id":10,"first_name":"Fd","type":"private","last_name":"Wd","username":"dd"},"date":1435478744,"document":{"file_name":"Text File","thumbnail":{},"file_id":"BQADBQADMwIAAsYifgZ_CEh0u682xwI","file_unique_id": "AQAD_QIfa3QAAyA4BgAB","file_size":446}}'
     msg = types.Message.de_json(json_string)
     assert msg.document.file_name == 'Text File'
     assert msg.content_type == 'document'
@@ -113,11 +113,11 @@ def test_json_Message_Photo():
 
 
 def test_json_Message_Video():
-    json_string = r'{"message_id":101,"from":{"id":109734,"first_name":"dd","last_name":"dd","username":"dd","is_bot":true },"chat":{"id":109734,"first_name":"dd","type":"private","last_name":"dd","username":"dd"},"date":1435481960,"video":{"duration":3,"caption":"","width":360,"height":640,"thumb":{"file_id":"AAQFABPiYnBjkDwMAAIC","file_unique_id": "AQADTeisa3QAAz1nAAI","file_size":1597,"width":50,"height":90},"file_id":"BAADBQADNifgb_TOPEKErGoQI","file_unique_id": "AgADbgEAAn8VSFY","file_size":260699}}'
+    json_string = r'{"message_id":101,"from":{"id":109734,"first_name":"dd","last_name":"dd","username":"dd","is_bot":true },"chat":{"id":109734,"first_name":"dd","type":"private","last_name":"dd","username":"dd"},"date":1435481960,"video":{"duration":3,"caption":"","width":360,"height":640,"thumbnail":{"file_id":"AAQFABPiYnBjkDwMAAIC","file_unique_id": "AQADTeisa3QAAz1nAAI","file_size":1597,"width":50,"height":90},"file_id":"BAADBQADNifgb_TOPEKErGoQI","file_unique_id": "AgADbgEAAn8VSFY","file_size":260699}}'
     msg = types.Message.de_json(json_string)
     assert msg.video
     assert msg.video.duration == 3
-    assert msg.video.thumb.width == 50
+    assert msg.video.thumbnail.width == 50
     assert msg.content_type == 'video'
 
 
@@ -270,6 +270,34 @@ def test_sent_web_app_message():
     sent_web_app_message = types.SentWebAppMessage.de_json(json_string)
     assert sent_web_app_message.inline_message_id == '29430'
     
+
+def test_message_entity():
+    # TODO: Add support for nesting entities
+
+
+    sample_string_1 = r'{"update_id":934522126,"message":{"message_id":1374510,"from":{"id":927266710,"is_bot":false,"first_name":">_run","username":"coder2020","language_code":"en","is_premium":true},"chat":{"id":927266710,"first_name":">_run","username":"coder2020","type":"private"},"date":1682177590,"text":"b b b","entities":[{"offset":0,"length":2,"type":"bold"},{"offset":0,"length":1,"type":"italic"},{"offset":2,"length":2,"type":"bold"},{"offset":2,"length":1,"type":"italic"},{"offset":4,"length":1,"type":"bold"},{"offset":4,"length":1,"type":"italic"}]}}'
+    update = types.Update.de_json(sample_string_1)
+    message: types.Message = update.message
+    assert message.html_text == "<i><b>b </b></i><i><b>b </b></i><i><b>b</b></i>"
+
+    sample_string_2 = r'{"update_id":934522166,"message":{"message_id":1374526,"from":{"id":927266710,"is_bot":false,"first_name":">_run","username":"coder2020","language_code":"en","is_premium":true},"chat":{"id":927266710,"first_name":">_run","username":"coder2020","type":"private"},"date":1682179716,"text":"b b b","entities":[{"offset":0,"length":1,"type":"bold"},{"offset":2,"length":1,"type":"bold"},{"offset":4,"length":1,"type":"italic"}]}}'
+    message_2 = types.Update.de_json(sample_string_2).message
+    assert message_2.html_text == "<b>b</b> <b>b</b> <i>b</i>"
+
+    
+
+    sample_string_3 = r'{"update_id":934522172,"message":{"message_id":1374530,"from":{"id":927266710,"is_bot":false,"first_name":">_run","username":"coder2020","language_code":"en","is_premium":true},"chat":{"id":927266710,"first_name":">_run","username":"coder2020","type":"private"},"date":1682179968,"text":"This is a bold text with a nested italic and bold text.","entities":[{"offset":10,"length":4,"type":"bold"},{"offset":27,"length":7,"type":"italic"},{"offset":34,"length":15,"type":"bold"},{"offset":34,"length":15,"type":"italic"}]}}'
+    message_3 = types.Update.de_json(sample_string_3).message
+    assert message_3.html_text == "This is a <b>bold</b> text with a <i>nested </i><i><b>italic and bold</b></i> text."
+
+
+    sample_string_4 = r'{"update_id":934522437,"message":{"message_id":1374619,"from":{"id":927266710,"is_bot":false,"first_name":">_run","username":"coder2020","language_code":"en","is_premium":true},"chat":{"id":927266710,"first_name":">_run","username":"coder2020","type":"private"},"date":1682189507,"forward_from":{"id":927266710,"is_bot":false,"first_name":">_run","username":"coder2020","language_code":"en","is_premium":true},"forward_date":1682189124,"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😋😋","entities":[{"offset":0,"length":76,"type":"bold"},{"offset":0,"length":76,"type":"italic"},{"offset":0,"length":76,"type":"underline"},{"offset":0,"length":76,"type":"strikethrough"},{"offset":76,"length":2,"type":"custom_emoji","custom_emoji_id":"5456188142006575553"},{"offset":78,"length":2,"type":"custom_emoji","custom_emoji_id":"5456188142006575553"}]}}'
+    message_4 = types.Update.de_json(sample_string_4).message
+    assert message_4.html_text == '<s><u><i><b>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</b></i></u></s><tg-emoji emoji-id="5456188142006575553">😋</tg-emoji><tg-emoji emoji-id="5456188142006575553">😋</tg-emoji>'
+
+    
+
+
 
 
 

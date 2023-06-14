@@ -35,11 +35,10 @@ content_type_media = [
 #: Contains all service content types such as `User joined the group`.
 content_type_service = [
     'new_chat_members', 'left_chat_member', 'new_chat_title', 'new_chat_photo', 'delete_chat_photo',
-    'group_chat_created',
-    'supergroup_chat_created', 'channel_chat_created', 'migrate_to_chat_id', 'migrate_from_chat_id', 'pinned_message',
-    'proximity_alert_triggered', 'video_chat_scheduled', 'video_chat_started', 'video_chat_ended',
-    'video_chat_participants_invited', 'message_auto_delete_timer_changed', 'forum_topic_created', 'forum_topic_closed',
-    'forum_topic_reopened',
+    'group_chat_created', 'supergroup_chat_created', 'channel_chat_created', 'migrate_to_chat_id',
+    'migrate_from_chat_id', 'pinned_message', 'proximity_alert_triggered', 'video_chat_scheduled', 'video_chat_started',
+    'video_chat_ended', 'video_chat_participants_invited', 'message_auto_delete_timer_changed', 'forum_topic_created',
+    'forum_topic_closed', 'forum_topic_reopened', 'user_shared', 'chat_shared',
 ]
 
 #: All update types, should be used for allowed_updates parameter in polling.
@@ -154,7 +153,8 @@ class ThreadPool:
         for worker in self.workers:
             worker.stop()
         for worker in self.workers:
-            worker.join()
+            if worker != threading.current_thread():
+                worker.join()
 
 
 class AsyncTask:
@@ -273,6 +273,39 @@ def extract_arguments(text: str) -> str or None:
     result = regexp.match(text)
     return result.group(2) if is_command(text) else None
 
+def extract_entity(text: str, e: types.MessageEntity) -> str:
+    """
+    Returns the content of the entity.
+    
+    :param text: The text of the message the entity belongs to
+    :type text: :obj:`str`
+    
+    :param e: The entity to extract
+    :type e: :obj:`MessageEntity`
+    
+    :return: The content of the entity
+    :rtype: :obj:`str`
+    """
+    offset = 0
+    start = 0
+    encoded_text = text.encode()
+    end = len(encoded_text)
+    i = 0
+    
+    for byte in encoded_text:
+        if (byte & 0xc0) != 0x80:
+            if offset == e.offset:
+                start = i
+            elif offset - e.offset == e.length:
+                end = i
+                break
+            if byte >= 0xf0:
+                offset += 2
+            else:
+                offset += 1
+        i += 1
+    
+    return encoded_text[start:end].decode()
 
 def split_string(text: str, chars_per_string: int) -> List[str]:
     """
@@ -387,11 +420,13 @@ def quick_markup(values: Dict[str, Dict[str, Any]], row_width: int = 2) -> types
     .. code-block:: python3
         :caption: Using quick_markup:
 
-        quick_markup({
+        from telebot.util import quick_markup
+
+        markup = quick_markup({
             'Twitter': {'url': 'https://twitter.com'},
             'Facebook': {'url': 'https://facebook.com'},
             'Back': {'callback_data': 'whatever'}
-        }, row_width=2): 
+        }, row_width=2)
         # returns an InlineKeyboardMarkup with two buttons in a row, one leading to Twitter, the other to facebook
         # and a back button below
 
@@ -410,7 +445,7 @@ def quick_markup(values: Dict[str, Dict[str, Any]], row_width: int = 2) -> types
     :param values: a dict containing all buttons to create in this format: {text: kwargs} {str:}
     :type values: :obj:`dict`
 
-    :param row_width: int row width
+    :param row_width: number of :class:`telebot.types.InlineKeyboardButton` objects on each row
     :type row_width: :obj:`int`
 
     :return: InlineKeyboardMarkup
@@ -555,7 +590,7 @@ def webhook_google_functions(bot, request):
         return 'Bot ON'
 
 
-def antiflood(function: Callable, *args, **kwargs):
+def antiflood(function: Callable, *args, number_retries=5, **kwargs):
     """
     Use this function inside loops in order to avoid getting TooManyRequests error.
     Example:
@@ -569,6 +604,9 @@ def antiflood(function: Callable, *args, **kwargs):
     :param function: The function to call
     :type function: :obj:`Callable`
 
+    :param number_retries: Number of retries to send
+    :type function: :obj:int
+
     :param args: The arguments to pass to the function
     :type args: :obj:`tuple`
 
@@ -580,14 +618,16 @@ def antiflood(function: Callable, *args, **kwargs):
     from telebot.apihelper import ApiTelegramException
     from time import sleep
 
-    try:
-        return function(*args, **kwargs)
-    except ApiTelegramException as ex:
-        if ex.error_code == 429:
-            sleep(ex.result_json['parameters']['retry_after'])
+    for _ in range(number_retries - 1):
+        try:
             return function(*args, **kwargs)
-        else:
-            raise
+        except ApiTelegramException as ex:
+            if ex.error_code == 429:
+                sleep(ex.result_json['parameters']['retry_after'])
+            else:
+                raise
+    else:
+        return function(*args, **kwargs)
 
 
 def parse_web_app_data(token: str, raw_init_data: str):
