@@ -415,8 +415,16 @@ class AsyncTeleBot:
                 except asyncio.CancelledError:
                     return
                 except asyncio_helper.RequestTimeout as e:
-                    logger.error(str(e))
-                    if non_stop:
+                    handled = False
+                    if self.exception_handler:
+                        self.exception_handler.handle(e)
+                        handled = True
+
+                    if not handled:
+                        logger.error('Unhandled exception (full traceback for debug level): %s', str(e))
+                        logger.debug(traceback.format_exc())
+                        
+                    if non_stop or handled:
                         await asyncio.sleep(2)
                         continue
                     else:
@@ -536,6 +544,7 @@ class AsyncTeleBot:
                     if not isinstance(result, ContinueHandling):
                         break
             except Exception as e:
+                handler_error = e
                 if self.exception_handler:
                     self.exception_handler.handle(e)
                 else:
@@ -5422,6 +5431,24 @@ class AsyncTeleBot:
             button = types.InlineQueryResultsButton(text=switch_pm_text, start_parameter=switch_pm_parameter)
         return await asyncio_helper.answer_inline_query(self.token, inline_query_id, results, cache_time, is_personal, next_offset,
                                              button)
+
+    async def unpin_all_general_forum_topic_messages(self, chat_id: Union[int, str]) -> bool:
+        """
+        Use this method to clear the list of pinned messages in a General forum topic. 
+        The bot must be an administrator in the chat for this to work and must have the
+        can_pin_messages administrator right in the supergroup.
+        Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#unpinAllGeneralForumTopicMessages
+
+        :param chat_id: Unique identifier for the target chat or username of chat
+        :type chat_id: :obj:`int` | :obj:`str`
+
+        :return: On success, True is returned.
+        :rtype: :obj:`bool`
+        """
+
+        return await asyncio_helper.unpin_all_general_forum_topic_messages(self.token, chat_id)
 
     async def answer_callback_query(
             self, callback_query_id: int, 
