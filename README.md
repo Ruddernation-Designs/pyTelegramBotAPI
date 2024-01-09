@@ -10,7 +10,7 @@
 <p align="center">A simple, but extensible Python implementation for the <a href="https://core.telegram.org/bots/api">Telegram Bot API</a>.</p>
 <p align="center">Both synchronous and asynchronous.</p>
 
-## <p align="center">Supported Bot API version: <a href="https://core.telegram.org/bots/api#august-18-2023">6.8</a>!
+## <p align="center">Supported Bot API version: <a href="https://core.telegram.org/bots/api#december-29-2023">7.0</a>!
 
 <h2><a href='https://pytba.readthedocs.io/en/latest/index.html'>Official documentation</a></h2>
 <h2><a href='https://pytba.readthedocs.io/ru/latest/index.html'>Official ru documentation</a></h2>
@@ -165,7 +165,7 @@ To start the bot, simply open up a terminal and enter `python echo_bot.py` to ru
 All types are defined in types.py. They are all completely in line with the [Telegram API's definition of the types](https://core.telegram.org/bots/api#available-types), except for the Message's `from` field, which is renamed to `from_user` (because `from` is a Python reserved token). Thus, attributes such as `message_id` can be accessed directly with `message.message_id`. Note that `message.chat` can be either an instance of `User` or `GroupChat` (see [How can I distinguish a User and a GroupChat in message.chat?](#how-can-i-distinguish-a-user-and-a-groupchat-in-messagechat)).
 
 The Message object also has a `content_type`attribute, which defines the type of the Message. `content_type` can be one of the following strings:
-`text`, `audio`, `document`, `photo`, `sticker`, `video`, `video_note`, `voice`, `location`, `contact`, `new_chat_members`, `left_chat_member`, `new_chat_title`, `new_chat_photo`, `delete_chat_photo`, `group_chat_created`, `supergroup_chat_created`, `channel_chat_created`, `migrate_to_chat_id`, `migrate_from_chat_id`, `pinned_message`, `web_app_data`.
+`text`, `audio`, `document`, `animation`, `game`, `photo`, `sticker`, `video`, `video_note`, `voice`, `location`, `contact`, `venue`, `dice`, `new_chat_members`, `left_chat_member`, `new_chat_title`, `new_chat_photo`, `delete_chat_photo`, `group_chat_created`, `supergroup_chat_created`, `channel_chat_created`, `migrate_to_chat_id`, `migrate_from_chat_id`, `pinned_message`, `invoice`, `successful_payment`, `connected_website`, `poll`, `passport_data`, `proximity_alert_triggered`, `video_chat_scheduled`, `video_chat_started`, `video_chat_ended`, `video_chat_participants_invited`, `web_app_data`, `message_auto_delete_timer_changed`, `forum_topic_created`, `forum_topic_closed`, `forum_topic_reopened`, `forum_topic_edited`, `general_forum_topic_hidden`, `general_forum_topic_unhidden`, `write_access_allowed`, `user_shared`, `chat_shared`, `story`.
 
 You can use some types in one function. Example:
 
@@ -374,7 +374,7 @@ class Middleware(BaseMiddleware):
         if exception: # check for exception
             print(exception)
 ```
-Class-based middleware should have to functions: post and pre process.
+Class-based middleware should have two functions: post and pre process.
 So, as you can see, class-based middlewares work before and after handler execution.
 For more, check out in [examples](https://github.com/eternnoir/pyTelegramBotAPI/tree/master/examples/middleware/class_based)	
 	
@@ -892,5 +892,8 @@ Here are some examples of template:
 * [CalendarIT Bot](https://t.me/calendarit_bot) ([source](https://github.com/codebyzen/CalendarIT_Telegram_Bot))by [CodeByZen](https://github.com/codebyzen). A simple, but extensible Python Telegram bot, can post acquainted with what is happening today, tomorrow or what happened 20 years ago to channel. 
 * [DownloadMusicBOT](https://github.com/fcoagz/DownloadMusicBOT) by *Francisco Griman* - It is a simple bot that downloads audio from YouTube videos on Telegram.
 * [AwesomeChatGPTBot](https://github.com/Kourva/AwesomeChatGPTBot) - Simple ChatGTP-3.5 bot. It is FREE and can remember chat history for a while With pre-defined roles!
+* [QR-Code For You Bot](https://t.me/qrcode_for_you_bot) ([source](https://github.com/arashnm80/qrcode-for-you-bot)) by [Arashnm80](https://github.com/arashnm80). Telegram qrcode generator bot created with pyhton and telebot.
+* [Best Instagram Downloader Bot](https://t.me/Best_Instagram_Downloader_Bot) ([source](https://github.com/arashnm80/best-instagram-downloader)) by [Arashnm80](https://github.com/arashnm80). Free and open source telegram bot to download posts and reels from Instagram.
+* [Personal bot for ChatGPT & Bard](https://github.com/Simatwa/pyTelegramBotAPI.git) by [Simatwa](https://github.com/Simatwa/telegram-chatbots). Chat with ChatGPT & Bard on the go.
 
 **Want to have your bot listed here? Just make a pull request. Only bots with public source code are accepted.**
