@@ -1463,11 +1463,9 @@ async def send_invoice(
     :param send_phone_number_to_provider: Pass True, if user's phone number should be sent to provider
     :param send_email_to_provider: Pass True, if user's email address should be sent to provider
     :param disable_notification: Sends the message silently. Users will receive a notification with no sound.
-    :param reply_to_message_id: If the message is a reply, ID of the original message
     :param reply_markup: A JSON-serialized object for an inline keyboard. If empty, one 'Pay total price' button will be shown. If not empty, the first button must be a Pay button
     :param provider_data: A JSON-serialized data about the invoice, which will be shared with the payment provider. A detailed description of required fields should be provided by the payment provider.
     :param timeout:
-    :param allow_sending_without_reply:
     :param max_tip_amount: The maximum accepted amount for tips in the smallest units of the currency
     :param suggested_tip_amounts: A JSON-serialized array of suggested amounts of tips in the smallest units of the currency.
         At most 4 suggested tip amounts can be specified. The suggested tip amounts must be positive, passed in a strictly increased order and must not exceed max_tip_amount.
@@ -1879,7 +1877,7 @@ async def delete_messages(token, chat_id, message_ids):
     method_url = 'deleteMessages'
     payload = {
         'chat_id': chat_id,
-        'message_ids': message_ids
+        'message_ids': json.dumps(message_ids)
     }
     return await _process_request(token, method_url, params=payload)
 
@@ -1889,7 +1887,7 @@ async def forward_messages(token, chat_id, from_chat_id, message_ids, disable_no
     payload = {
         'chat_id': chat_id,
         'from_chat_id': from_chat_id,
-        'message_ids': message_ids,
+        'message_ids': json.dumps(message_ids),
     }
     if disable_notification is not None:
         payload['disable_notification'] = disable_notification
@@ -1907,7 +1905,7 @@ async def copy_messages(token, chat_id, from_chat_id, message_ids, disable_notif
     payload = {
         'chat_id': chat_id,
         'from_chat_id': from_chat_id,
-        'message_ids': message_ids,
+        'message_ids': json.dumps(message_ids),
     }
     if disable_notification is not None:
         payload['disable_notification'] = disable_notification

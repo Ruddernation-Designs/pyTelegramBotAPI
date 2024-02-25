@@ -1368,7 +1368,9 @@ class TeleBot:
     
     def set_message_reaction(self, chat_id: Union[int, str], message_id: int, reaction: Optional[List[types.ReactionType]]=None, is_big: Optional[bool]=None) -> bool:
         """
-        Use this method to set a reaction to a message in a chat. The bot must be an administrator in the chat for this to work and must have the appropriate admin rights. Returns True on success.
+        Use this method to change the chosen reactions on a message. 
+        Service messages can't be reacted to. Automatically forwarded messages from a channel to its discussion group have the same
+        available reactions as messages in the channel. Returns True on success.
 
         Telegram documentation: https://core.telegram.org/bots/api#setmessagereaction
 
@@ -1657,12 +1659,15 @@ class TeleBot:
                 logger.warning("Both 'link_preview_options' and 'disable_web_page_preview' parameters are set: conflicting, 'disable_web_page_preview' is deprecated")
             else:
                 # create a LinkPreviewOptions object
-                link_preview_options = types.LinkPreviewOptions(
-                    disable_web_page_preview=disable_web_page_preview
-                )
+                link_preview_options = types.LinkPreviewOptions(is_disabled=disable_web_page_preview)
 
-        if link_preview_options and (link_preview_options.disable_web_page_preview is None):
-            link_preview_options.disable_web_page_preview = self.disable_web_page_preview
+        if link_preview_options and (link_preview_options.is_disabled is None):
+            link_preview_options.is_disabled = self.disable_web_page_preview
+
+        # Fix preview link options if link_preview_options not provided. Get param from class
+        if not link_preview_options and self.disable_web_page_preview:
+            # create a LinkPreviewOptions object
+            link_preview_options = types.LinkPreviewOptions(is_disabled=self.disable_web_page_preview)
 
         return types.Message.de_json(
             apihelper.send_message(
@@ -1843,9 +1848,7 @@ class TeleBot:
     
     def delete_messages(self, chat_id: Union[int, str], message_ids: List[int]):
         """
-        Use this method to delete multiple messages in a chat. 
-        The number of messages to be deleted must not exceed 100. 
-        If the chat is a private chat, the user must be an administrator of the chat for this to work and must have the appropriate admin rights. 
+        Use this method to delete multiple messages simultaneously. If some of the specified messages can't be found, they are skipped.
         Returns True on success.
 
         Telegram documentation: https://core.telegram.org/bots/api#deletemessages
@@ -1865,7 +1868,11 @@ class TeleBot:
     def forward_messages(self, chat_id: Union[str, int], from_chat_id: Union[str, int], message_ids: List[int], disable_notification: Optional[bool]=None,
                          message_thread_id: Optional[int]=None, protect_content: Optional[bool]=None) -> List[types.MessageID]:
         """
-        Use this method to forward messages of any kind.
+        Use this method to forward multiple messages of any kind. If some of the specified messages can't be found or forwarded, they are skipped.
+        Service messages and messages with protected content can't be forwarded. Album grouping is kept for forwarded messages.
+        On success, an array of MessageId of the sent messages is returned.
+
+        Telegram documentation: https://core.telegram.org/bots/api#forwardmessages
 
         :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
         :type chat_id: :obj:`int` or :obj:`str`
@@ -1903,7 +1910,14 @@ class TeleBot:
                         disable_notification: Optional[bool] = None, message_thread_id: Optional[int] = None,
                         protect_content: Optional[bool] = None, remove_caption: Optional[bool] = None) -> List[types.MessageID]:
             """
-            Use this method to copy messages of any kind.
+            Use this method to copy messages of any kind. If some of the specified messages can't be found or copied, they are skipped.
+            Service messages, giveaway messages, giveaway winners messages, and invoice messages can't be copied.
+            A quiz poll can be copied only if the value of the field correct_option_id is known to the bot.
+            The method is analogous to the method forwardMessages, but the copied messages don't have a link to the original message.
+            Album grouping is kept for copied messages. On success, an array of MessageId of the sent messages is returned.
+
+            Telegram documentation: https://core.telegram.org/bots/api#copymessages
+
 
             :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
             :type chat_id: :obj:`int` or :obj:`str`
@@ -1941,10 +1955,10 @@ class TeleBot:
     def send_dice(
             self, chat_id: Union[int, str],
             emoji: Optional[str]=None, disable_notification: Optional[bool]=None, 
-            reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
+            reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             timeout: Optional[int]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             protect_content: Optional[bool]=None,
             message_thread_id: Optional[int]=None,
             reply_parameters: Optional[types.ReplyParameters]=None) -> types.Message:
@@ -2120,14 +2134,14 @@ class TeleBot:
             self, chat_id: Union[int, str], audio: Union[Any, str], 
             caption: Optional[str]=None, duration: Optional[int]=None, 
             performer: Optional[str]=None, title: Optional[str]=None,
+            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             parse_mode: Optional[str]=None, 
             disable_notification: Optional[bool]=None,
-            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             timeout: Optional[int]=None, 
             thumbnail: Optional[Union[Any, str]]=None,
             caption_entities: Optional[List[types.MessageEntity]]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             protect_content: Optional[bool]=None,
             message_thread_id: Optional[int]=None,
             thumb: Optional[Union[Any, str]]=None,
@@ -2242,13 +2256,13 @@ class TeleBot:
     def send_voice(
             self, chat_id: Union[int, str], voice: Union[Any, str], 
             caption: Optional[str]=None, duration: Optional[int]=None, 
+            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
             parse_mode: Optional[str]=None, 
             disable_notification: Optional[bool]=None, 
-            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             timeout: Optional[int]=None,
             caption_entities: Optional[List[types.MessageEntity]]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             protect_content: Optional[bool]=None,
             message_thread_id: Optional[int]=None,
             reply_parameters: Optional[types.ReplyParameters]=None) -> types.Message:
@@ -2339,15 +2353,15 @@ class TeleBot:
 
     def send_document(
             self, chat_id: Union[int, str], document: Union[Any, str],
+            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
             caption: Optional[str]=None, 
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
             parse_mode: Optional[str]=None, 
             disable_notification: Optional[bool]=None, 
-            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             timeout: Optional[int]=None, 
             thumbnail: Optional[Union[Any, str]]=None,
             caption_entities: Optional[List[types.MessageEntity]]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             visible_file_name: Optional[str]=None,
             disable_content_type_detection: Optional[bool]=None,
             data: Optional[Union[Any, str]]=None,
@@ -2462,11 +2476,11 @@ class TeleBot:
     def send_sticker(
             self, chat_id: Union[int, str],
             sticker: Union[Any, str],
-            reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
-            disable_notification: Optional[bool]=None, 
             reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
+            reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
+            disable_notification: Optional[bool]=None,
             timeout: Optional[int]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             protect_content:Optional[bool]=None,
             data: Union[Any, str]=None,
             message_thread_id: Optional[int]=None,
@@ -2820,12 +2834,12 @@ class TeleBot:
             self, chat_id: Union[int, str], data: Union[Any, str], 
             duration: Optional[int]=None, 
             length: Optional[int]=None,
+            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None,
             disable_notification: Optional[bool]=None, 
-            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             timeout: Optional[int]=None, 
             thumbnail: Optional[Union[Any, str]]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             protect_content: Optional[bool]=None,
             message_thread_id: Optional[int]=None,
             thumb: Optional[Union[Any, str]]=None,
@@ -2928,8 +2942,8 @@ class TeleBot:
             disable_notification: Optional[bool]=None, 
             protect_content: Optional[bool]=None,
             reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             timeout: Optional[int]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             message_thread_id: Optional[int]=None,
             reply_parameters: Optional[types.ReplyParameters]=None) -> List[types.Message]:
         """
@@ -2998,15 +3012,15 @@ class TeleBot:
     def send_location(
             self, chat_id: Union[int, str], 
             latitude: float, longitude: float, 
-            live_period: Optional[int]=None, 
+            live_period: Optional[int]=None,
+            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility 
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             disable_notification: Optional[bool]=None, 
-            reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             timeout: Optional[int]=None,
             horizontal_accuracy: Optional[float]=None, 
             heading: Optional[int]=None, 
-            proximity_alert_radius: Optional[int]=None, 
+            proximity_alert_radius: Optional[int]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility 
             protect_content: Optional[bool]=None,
             message_thread_id: Optional[int]=None,
             reply_parameters: Optional[types.ReplyParameters]=None) -> types.Message:
@@ -3200,9 +3214,9 @@ class TeleBot:
             foursquare_type: Optional[str]=None,
             disable_notification: Optional[bool]=None, 
             reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             timeout: Optional[int]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             google_place_id: Optional[str]=None,
             google_place_type: Optional[str]=None,
             protect_content: Optional[bool]=None,
@@ -3306,9 +3320,9 @@ class TeleBot:
             vcard: Optional[str]=None,
             disable_notification: Optional[bool]=None, 
             reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             timeout: Optional[int]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             protect_content: Optional[bool]=None, message_thread_id: Optional[int]=None,
             reply_parameters: Optional[types.ReplyParameters]=None) -> types.Message:
         """
@@ -3458,7 +3472,7 @@ class TeleBot:
                less than 30 seconds from the current time they are considered to be banned forever
         :type until_date: :obj:`int` or :obj:`datetime`
 
-        :param revoke_messages: Bool: Pass True to delete all messages from the chat for the user that is being removed.
+        :param revoke_messages: Pass True to delete all messages from the chat for the user that is being removed.
             If False, the user will be able to see messages in the group that were sent before the user was removed. 
             Always True for supergroups and channels.
         :type revoke_messages: :obj:`bool`
@@ -3531,50 +3545,46 @@ class TeleBot:
         :param until_date: Date when restrictions will be lifted for the user, unix time.
             If user is restricted for more than 366 days or less than 30 seconds from the current time,
             they are considered to be restricted forever
-        :type until_date: :obj:`int` or :obj:`datetime`
+        :type until_date: :obj:`int` or :obj:`datetime`, optional
 
-        :param can_send_messages: Pass True, if the user can send text messages, contacts, locations and venues
+        :param can_send_messages: deprecated
         :type can_send_messages: :obj:`bool`
         
-        :param can_send_media_messages: Pass True, if the user can send audios, documents, photos, videos, video notes
-            and voice notes, implies can_send_messages
+        :param can_send_media_messages: deprecated
         :type can_send_media_messages: :obj:`bool`
         
-        :param can_send_polls: Pass True, if the user is allowed to send polls, implies can_send_messages
+        :param can_send_polls: deprecated
         :type can_send_polls: :obj:`bool`
 
-        :param can_send_other_messages: Pass True, if the user can send animations, games, stickers and use inline bots, implies can_send_media_messages
+        :param can_send_other_messages: deprecated
         :type can_send_other_messages: :obj:`bool`
 
-        :param can_add_web_page_previews: Pass True, if the user may add web page previews to their messages,
-            implies can_send_media_messages
+        :param can_add_web_page_previews: deprecated
         :type can_add_web_page_previews: :obj:`bool`
 
-        :param can_change_info: Pass True, if the user is allowed to change the chat title, photo and other settings.
-            Ignored in public supergroups
+        :param can_change_info: deprecated
         :type can_change_info: :obj:`bool`
 
-        :param can_invite_users: Pass True, if the user is allowed to invite new users to the chat,
-            implies can_invite_users
+        :param can_invite_users: deprecated
         :type can_invite_users: :obj:`bool`
 
-        :param can_pin_messages: Pass True, if the user is allowed to pin messages. Ignored in public supergroups
+        :param can_pin_messages: deprecated
         :type can_pin_messages: :obj:`bool`
 
-        :param use_independent_chat_permissions: Pass True if chat permissions are set independently. Otherwise,
-            the can_send_other_messages and can_add_web_page_previews permissions will imply the can_send_messages,
-            can_send_audios, can_send_documents, can_send_photos, can_send_videos, can_send_video_notes, and
-            can_send_voice_notes permissions; the can_send_polls permission will imply the can_send_messages permission.
-        :type use_independent_chat_permissions: :obj:`bool`
+        :param use_independent_chat_permissions: Pass True if chat permissions are set independently.
+            Otherwise, the can_send_other_messages and can_add_web_page_previews permissions will imply the can_send_messages,
+            can_send_audios, can_send_documents, can_send_photos, can_send_videos, can_send_video_notes, and can_send_voice_notes
+            permissions; the can_send_polls permission will imply the can_send_messages permission.
+        :type use_independent_chat_permissions: :obj:`bool`, optional
 
-        :param permissions: Pass ChatPermissions object to set all permissions at once. Use this param instead of
-            passing all boolean parameters.
+        :param permissions: ChatPermissions object defining permissions.
         :type permissions: :class:`telebot.types.ChatPermissions`
 
         :return: True on success
         :rtype: :obj:`bool`
         """
         if permissions is None:
+            logger.warning('The parameters "can_..." are deprecated, use "permissions" instead.')
             permissions = types.ChatPermissions(
                 can_send_messages=can_send_messages,
                 can_send_media_messages=can_send_media_messages,
@@ -3585,7 +3595,6 @@ class TeleBot:
                 can_invite_users=can_invite_users,
                 can_pin_messages=can_pin_messages
             )
-            logger.warning('The parameters "can_..." are deprecated, use "permissions" instead.')
 
         return apihelper.restrict_chat_member(
             self.token, chat_id, user_id, permissions, until_date=until_date,
@@ -4433,12 +4442,15 @@ class TeleBot:
                 logger.warning("Both 'link_preview_options' and 'disable_web_page_preview' parameters are set: conflicting, 'disable_web_page_preview' is deprecated")
             else:
                 # create a LinkPreviewOptions object
-                link_preview_options = types.LinkPreviewOptions(
-                    disable_web_page_preview=disable_web_page_preview
-                )
+                link_preview_options = types.LinkPreviewOptions(is_disabled=disable_web_page_preview)
 
-        if link_preview_options and (link_preview_options.disable_web_page_preview is None):
-            link_preview_options.disable_web_page_preview = self.disable_web_page_preview
+        if link_preview_options and (link_preview_options.is_disabled is None):
+            link_preview_options.is_disabled = self.disable_web_page_preview
+
+        # Fix preview link options if link_preview_options not provided. Get param from class
+        if not link_preview_options and self.disable_web_page_preview:
+            # create a LinkPreviewOptions object
+            link_preview_options = types.LinkPreviewOptions(is_disabled=self.disable_web_page_preview)
 
         result = apihelper.edit_message_text(
             self.token, text, chat_id=chat_id, message_id=message_id, inline_message_id=inline_message_id,
@@ -4526,9 +4538,9 @@ class TeleBot:
             self, chat_id: Union[int, str], game_short_name: str, 
             disable_notification: Optional[bool]=None,
             reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             timeout: Optional[int]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             protect_content: Optional[bool]=None,
             message_thread_id: Optional[int]=None,
             reply_parameters: Optional[types.ReplyParameters]=None) -> types.Message:
@@ -4694,10 +4706,10 @@ class TeleBot:
             is_flexible: Optional[bool]=None,
             disable_notification: Optional[bool]=None, 
             reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
             provider_data: Optional[str]=None, 
             timeout: Optional[int]=None,
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             max_tip_amount: Optional[int] = None,
             suggested_tip_amounts: Optional[List[int]]=None,
             protect_content: Optional[bool]=None,
@@ -4966,8 +4978,8 @@ class TeleBot:
             is_closed: Optional[bool]=None,
             disable_notification: Optional[bool]=False,
             reply_to_message_id: Optional[int]=None,          # deprecated, for backward compatibility
-            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             reply_markup: Optional[REPLY_MARKUP_TYPES]=None, 
+            allow_sending_without_reply: Optional[bool]=None, # deprecated, for backward compatibility
             timeout: Optional[int]=None,
             explanation_entities: Optional[List[types.MessageEntity]]=None,
             protect_content: Optional[bool]=None,
@@ -5225,8 +5237,8 @@ class TeleBot:
 
     def reply_to(self, message: types.Message, text: str, **kwargs) -> types.Message:
         """
-        Convenience function for `send_message(message.chat.id, text, reply_to_message_id=message.message_id, **kwargs)`
-        
+        Convenience function for `send_message(message.chat.id, text, reply_parameters=(message.message_id...), **kwargs)`
+
         :param message: Instance of :class:`telebot.types.Message`
         :type message: :obj:`types.Message`
 
@@ -5238,7 +5250,23 @@ class TeleBot:
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
-        return self.send_message(message.chat.id, text, reply_to_message_id=message.message_id, **kwargs)
+        if kwargs:
+            reply_parameters = kwargs.pop("reply_parameters", None)
+            if "allow_sending_without_reply" in kwargs:
+                logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        else:
+            reply_parameters = None
+
+        if not reply_parameters:
+            reply_parameters = types.ReplyParameters(
+                message.message_id,
+                allow_sending_without_reply=kwargs.pop("allow_sending_without_reply", None) if kwargs else None
+            )
+
+        if not reply_parameters.message_id:
+            reply_parameters.message_id = message.message_id
+
+        return self.send_message(message.chat.id, text, reply_parameters=reply_parameters, **kwargs)
 
 
     def answer_inline_query(

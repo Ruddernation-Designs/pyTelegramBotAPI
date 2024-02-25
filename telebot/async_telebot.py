@@ -111,7 +111,7 @@ class AsyncTeleBot:
     :param protect_content: Default value for protect_content, defaults to None
     :type protect_content: :obj:`bool`, optional
 
-    :param allow_sending_without_reply: Default value for allow_sending_without_reply, defaults to None
+    :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Default value for allow_sending_without_reply, defaults to None
     :type allow_sending_without_reply: :obj:`bool`, optional
     
     :param colorful_logs: Outputs colorful logs
@@ -2422,7 +2422,9 @@ class AsyncTeleBot:
 
     async def set_message_reaction(self, chat_id: Union[int, str], message_id: int, reaction: Optional[List[types.ReactionType]]=None, is_big: Optional[bool]=None) -> bool:
         """
-        Use this method to set a reaction to a message in a chat. The bot must be an administrator in the chat for this to work and must have the appropriate admin rights. Returns True on success.
+        Use this method to change the chosen reactions on a message. 
+        Service messages can't be reacted to. Automatically forwarded messages from a channel to its discussion group have the same
+        available reactions as messages in the channel. Returns True on success.
 
         Telegram documentation: https://core.telegram.org/bots/api#setmessagereaction
 
@@ -2661,7 +2663,7 @@ class AsyncTeleBot:
         :param entities: List of special entities that appear in message text, which can be specified instead of parse_mode
         :type entities: Array of :class:`telebot.types.MessageEntity`
 
-        :param disable_web_page_preview: Disables link previews for links in this message
+        :param disable_web_page_preview: Deprecated - Use link_preview_options instead.
         :type disable_web_page_preview: :obj:`bool`
 
         :param disable_notification: Sends the message silently. Users will receive a notification with no sound.
@@ -2670,10 +2672,10 @@ class AsyncTeleBot:
         :param protect_content: If True, the message content will be hidden for all users except for the target user
         :type protect_content: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions to remove reply keyboard or to force a reply from the user.
@@ -2699,25 +2701,48 @@ class AsyncTeleBot:
         disable_web_page_preview = self.disable_web_page_preview if (disable_web_page_preview is None) else disable_web_page_preview
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
-        if disable_web_page_preview:
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
+
+        if disable_web_page_preview is not None:
             # show a deprecation warning
             logger.warning("The parameter 'disable_web_page_preview' is deprecated. Use 'link_preview_options' instead.")
+            
+            if link_preview_options:
+                # show a conflict warning
+                logger.warning("Both 'link_preview_options' and 'disable_web_page_preview' parameters are set: conflicting, 'disable_web_page_preview' is deprecated")
+            else:
+                # create a LinkPreviewOptions object
+                link_preview_options = types.LinkPreviewOptions(
+                    is_disabled=disable_web_page_preview
+                )
 
+        if link_preview_options and (link_preview_options.is_disabled is None):
+            link_preview_options.is_disabled = self.disable_web_page_preview
+
+        # Fix preview link options if link_preview_options not provided. Get param from class
+        if not link_preview_options and self.disable_web_page_preview:
             # create a LinkPreviewOptions object
-            link_preview_options = types.LinkPreviewOptions(
-                disable_web_page_preview=disable_web_page_preview
-            )
+            link_preview_options = types.LinkPreviewOptions(is_disabled=self.disable_web_page_preview)
 
         return types.Message.de_json(
             await asyncio_helper.send_message(
@@ -2810,10 +2835,10 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions to remove reply keyboard
@@ -2836,17 +2861,26 @@ class AsyncTeleBot:
         parse_mode = self.parse_mode if (parse_mode is None) else parse_mode
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.MessageID.de_json(
             await asyncio_helper.copy_message(self.token, chat_id, from_chat_id, message_id, caption, parse_mode, caption_entities,
@@ -2884,10 +2918,8 @@ class AsyncTeleBot:
     
     async def delete_messages(self, chat_id: Union[int, str], message_ids: List[int]):
         """
-        Use this method to delete multiple messages in a chat. 
-        The number of messages to be deleted must not exceed 100. 
-        If the chat is a private chat, the user must be an administrator of the chat for this to work and must have the appropriate admin rights. 
-        Returns True on success.
+        Use this method to delete multiple messages simultaneously. 
+        If some of the specified messages can't be found, they are skipped. Returns True on success.
 
         Telegram documentation: https://core.telegram.org/bots/api#deletemessages
 
@@ -2905,7 +2937,11 @@ class AsyncTeleBot:
     async def forward_messages(self, chat_id: Union[str, int], from_chat_id: Union[str, int], message_ids: List[int], disable_notification: Optional[bool]=None,
                          message_thread_id: Optional[int]=None, protect_content: Optional[bool]=None) -> List[types.MessageID]:
         """
-        Use this method to forward messages of any kind.
+        Use this method to forward multiple messages of any kind. If some of the specified messages can't be found or forwarded,
+        they are skipped. Service messages and messages with protected content can't be forwarded.
+        Album grouping is kept for forwarded messages. On success, an array of MessageId of the sent messages is returned.
+
+        Telegram documentation: https://core.telegram.org/bots/api#forwardmessages
 
         :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
         :type chat_id: :obj:`int` or :obj:`str`
@@ -2938,7 +2974,13 @@ class AsyncTeleBot:
                         disable_notification: Optional[bool] = None, message_thread_id: Optional[int] = None,
                         protect_content: Optional[bool] = None, remove_caption: Optional[bool] = None) -> List[types.MessageID]:
             """
-            Use this method to copy messages of any kind.
+            Use this method to copy messages of any kind. If some of the specified messages can't be found or copied, they are skipped. 
+            Service messages, giveaway messages, giveaway winners messages, and invoice messages can't be copied. A quiz poll can be copied
+            only if the value of the field correct_option_id is known to the bot. The method is analogous to the method forwardMessages, but
+            the copied messages don't have a link to the original message. Album grouping is kept for copied messages.
+            On success, an array of MessageId of the sent messages is returned.
+
+            Telegram documentation: https://core.telegram.org/bots/api#copymessages
 
             :param chat_id: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
             :type chat_id: :obj:`int` or :obj:`str`
@@ -2995,7 +3037,7 @@ class AsyncTeleBot:
         :param disable_notification: Sends the message silently. Users will receive a notification with no sound.
         :type disable_notification: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions
@@ -3006,7 +3048,7 @@ class AsyncTeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param protect_content: Protects the contents of the sent message from forwarding
@@ -3023,17 +3065,27 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.Message.de_json(
             await asyncio_helper.send_dice(
@@ -3082,10 +3134,10 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions
@@ -3111,17 +3163,27 @@ class AsyncTeleBot:
         parse_mode = self.parse_mode if (parse_mode is None) else parse_mode
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.Message.de_json(
             await asyncio_helper.send_photo(
@@ -3174,7 +3236,7 @@ class AsyncTeleBot:
         :param title: Track name
         :type title: :obj:`str`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup:
@@ -3199,7 +3261,7 @@ class AsyncTeleBot:
         :param caption_entities: A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode
         :type caption_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param protect_content: Protects the contents of the sent message from forwarding and saving
@@ -3220,21 +3282,31 @@ class AsyncTeleBot:
         parse_mode = self.parse_mode if (parse_mode is None) else parse_mode
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
         if thumb is not None and thumbnail is None:
             thumbnail = thumb
             logger.warning('The parameter "thumb" is deprecated, use "thumbnail" instead')
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.Message.de_json(
             await asyncio_helper.send_audio(
@@ -3275,7 +3347,7 @@ class AsyncTeleBot:
         :param duration: Duration of the voice message in seconds
         :type duration: :obj:`int`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions
@@ -3295,7 +3367,7 @@ class AsyncTeleBot:
         :param caption_entities: A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode
         :type caption_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param protect_content: Protects the contents of the sent message from forwarding and saving
@@ -3312,17 +3384,27 @@ class AsyncTeleBot:
         parse_mode = self.parse_mode if (parse_mode is None) else parse_mode
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.Message.de_json(
             await asyncio_helper.send_voice(
@@ -3360,7 +3442,7 @@ class AsyncTeleBot:
             String for Telegram to get a file from the Internet, or upload a new one using multipart/form-data
         :type document: :obj:`str` or :class:`telebot.types.InputFile`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param caption: Document caption (may also be used when resending documents by file_id), 0-1024 characters after entities parsing
@@ -3386,7 +3468,7 @@ class AsyncTeleBot:
         :param caption_entities: A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode
         :type caption_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param visible_file_name: allows to define file name that will be visible in the Telegram instead of original file name
@@ -3416,7 +3498,7 @@ class AsyncTeleBot:
         parse_mode = self.parse_mode if (parse_mode is None) else parse_mode
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
         if data and not(document):
             # function typo miss compatibility
@@ -3427,15 +3509,25 @@ class AsyncTeleBot:
             thumbnail = thumb
             logger.warning('The parameter "thumb" is deprecated. Use "thumbnail" instead.')
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.Message.de_json(
             await asyncio_helper.send_data(
@@ -3471,7 +3563,7 @@ class AsyncTeleBot:
             as a String for Telegram to get a .webp file from the Internet, or upload a new one using multipart/form-data.
         :type sticker: :obj:`str` or :class:`telebot.types.InputFile`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions to remove reply keyboard
@@ -3485,7 +3577,7 @@ class AsyncTeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param protect_content: Protects the contents of the sent message from forwarding and saving
@@ -3508,22 +3600,32 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
         if data and not(sticker):
             # function typo miss compatibility
             logger.warning('The parameter "data" is deprecated. Use "sticker" instead.')
             sticker = data
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.Message.de_json(
             await asyncio_helper.send_data(
@@ -3595,10 +3697,10 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions to remove reply keyboard
@@ -3630,17 +3732,27 @@ class AsyncTeleBot:
         parse_mode = self.parse_mode if (parse_mode is None) else parse_mode
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         if data and not(video):
             # function typo miss compatibility
@@ -3713,7 +3825,7 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions to remove reply keyboard
@@ -3730,7 +3842,7 @@ class AsyncTeleBot:
         :param caption_entities: List of special entities that appear in the caption, which can be specified instead of parse_mode
         :type caption_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param message_thread_id: Identifier of a message thread, in which the video will be sent
@@ -3751,17 +3863,27 @@ class AsyncTeleBot:
         parse_mode = self.parse_mode if (parse_mode is None) else parse_mode
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         if thumb is not None and thumbnail is None:
             thumbnail = thumb
@@ -3806,7 +3928,7 @@ class AsyncTeleBot:
         :param length: Video width and height, i.e. diameter of the video message
         :type length: :obj:`int`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions to remove reply keyboard
@@ -3826,7 +3948,7 @@ class AsyncTeleBot:
             so you can pass “attach://<file_attach_name>” if the thumbnail was uploaded using multipart/form-data under <file_attach_name>. 
         :type thumbnail: :obj:`str` or :class:`telebot.types.InputFile`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param protect_content: Protects the contents of the sent message from forwarding and saving
@@ -3846,17 +3968,27 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         if thumb is not None and thumbnail is None:
             thumbnail = thumb
@@ -3897,13 +4029,13 @@ class AsyncTeleBot:
         :param protect_content: Protects the contents of the sent message from forwarding and saving
         :type protect_content: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param message_thread_id: Identifier of a message thread, in which the messages will be sent
@@ -3917,17 +4049,27 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         result = await asyncio_helper.send_media_group(
             self.token, chat_id, media, disable_notification, timeout, protect_content, message_thread_id, reply_parameters)
@@ -3965,7 +4107,7 @@ class AsyncTeleBot:
         :param live_period: Period in seconds for which the location will be updated (see Live Locations, should be between 60 and 86400.
         :type live_period: :obj:`int`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions to remove reply keyboard
@@ -3988,7 +4130,7 @@ class AsyncTeleBot:
         :param proximity_alert_radius: For live locations, a maximum distance for proximity alerts about approaching another chat member, in meters. Must be between 1 and 100000 if specified.
         :type proximity_alert_radius: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
         
         :param protect_content: Protects the contents of the sent message from forwarding and saving
@@ -4005,17 +4147,27 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.Message.de_json(
             await asyncio_helper.send_location(
@@ -4162,7 +4314,7 @@ class AsyncTeleBot:
         :param disable_notification: Sends the message silently. Users will receive a notification with no sound.
         :type disable_notification: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard,
@@ -4173,7 +4325,7 @@ class AsyncTeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if one of the specified
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if one of the specified
             replied-to messages is not found.
         :type allow_sending_without_reply: :obj:`bool`
 
@@ -4197,17 +4349,27 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.Message.de_json(
             await asyncio_helper.send_venue(
@@ -4251,7 +4413,7 @@ class AsyncTeleBot:
         :param disable_notification: Sends the message silently. Users will receive a notification with no sound.
         :type disable_notification: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard,
@@ -4262,7 +4424,7 @@ class AsyncTeleBot:
         :param timeout: Timeout in seconds for the request.
         :type timeout: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if one of the specified
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if one of the specified
             replied-to messages is not found.
         :type allow_sending_without_reply: :obj:`bool`
 
@@ -4280,17 +4442,27 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.Message.de_json(
             await asyncio_helper.send_contact(
@@ -4434,41 +4606,37 @@ class AsyncTeleBot:
         :param until_date: Date when restrictions will be lifted for the user, unix time.
             If user is restricted for more than 366 days or less than 30 seconds from the current time,
             they are considered to be restricted forever
-        :type until_date: :obj:`int` or :obj:`datetime`
+        :type until_date: :obj:`int` or :obj:`datetime`, optional
 
-        :param can_send_messages: Pass True, if the user can send text messages, contacts, locations and venues
+        :param can_send_messages: deprecated
         :type can_send_messages: :obj:`bool`
         
-        :param can_send_media_messages: Pass True, if the user can send audios, documents, photos, videos, video notes
-            and voice notes, implies can_send_messages
+        :param can_send_media_messages: deprecated
         :type can_send_media_messages: :obj:`bool`
         
-        :param can_send_polls: Pass True, if the user is allowed to send polls, implies can_send_messages
+        :param can_send_polls: deprecated
         :type can_send_polls: :obj:`bool`
 
-        :param can_send_other_messages: Pass True, if the user can send animations, games, stickers and use inline bots, implies can_send_media_messages
+        :param can_send_other_messages: deprecated
         :type can_send_other_messages: :obj:`bool`
 
-        :param can_add_web_page_previews: Pass True, if the user may add web page previews to their messages,
-            implies can_send_media_messages
+        :param can_add_web_page_previews: deprecated
         :type can_add_web_page_previews: :obj:`bool`
 
-        :param can_change_info: Pass True, if the user is allowed to change the chat title, photo and other settings.
-            Ignored in public supergroups
+        :param can_change_info: deprecated
         :type can_change_info: :obj:`bool`
 
-        :param can_invite_users: Pass True, if the user is allowed to invite new users to the chat,
-            implies can_invite_users
+        :param can_invite_users: deprecated
         :type can_invite_users: :obj:`bool`
 
-        :param can_pin_messages: Pass True, if the user is allowed to pin messages. Ignored in public supergroups
+        :param can_pin_messages: deprecated
         :type can_pin_messages: :obj:`bool`
 
-        :param use_independent_chat_permissions: Pass True if chat permissions are set independently. Otherwise,
-            the can_send_other_messages and can_add_web_page_previews permissions will imply the can_send_messages,
-            can_send_audios, can_send_documents, can_send_photos, can_send_videos, can_send_video_notes, and
-            can_send_voice_notes permissions; the can_send_polls permission will imply the can_send_messages permission.
-        :type use_independent_chat_permissions: :obj:`bool`
+        :param use_independent_chat_permissions: Pass True if chat permissions are set independently.
+            Otherwise, the can_send_other_messages and can_add_web_page_previews permissions will imply the can_send_messages,
+            can_send_audios, can_send_documents, can_send_photos, can_send_videos, can_send_video_notes, and can_send_voice_notes
+            permissions; the can_send_polls permission will imply the can_send_messages permission.
+        :type use_independent_chat_permissions: :obj:`bool`, optional
 
         :param permissions: Pass ChatPermissions object to set all permissions at once. Use this parameter instead of
             passing all boolean parameters to avoid backward compatibility problems in future.
@@ -5273,7 +5441,7 @@ class AsyncTeleBot:
         :param entities: List of special entities that appear in the message text, which can be specified instead of parse_mode
         :type entities: List of :obj:`telebot.types.MessageEntity`
 
-        :param disable_web_page_preview: Disables link previews for links in this message
+        :param disable_web_page_preview: Deprecated - Use link_preview_options instead.
         :type disable_web_page_preview: :obj:`bool`
 
         :param reply_markup: A JSON-serialized object for an inline keyboard.
@@ -5288,14 +5456,23 @@ class AsyncTeleBot:
         parse_mode = self.parse_mode if (parse_mode is None) else parse_mode
         disable_web_page_preview = self.disable_web_page_preview if (disable_web_page_preview is None) else disable_web_page_preview
 
-        if disable_web_page_preview:
-            # show a deprecation warning
-            logger.warning("The parameter 'disable_web_page_preview' is deprecated. Use 'link_preview_options' instead.")
+        if disable_web_page_preview is not None:
+            if link_preview_options:
+                # show a conflict warning
+                logger.warning("Both 'link_preview_options' and 'disable_web_page_preview' parameters are set: conflicting, 'disable_web_page_preview' is deprecated")
+            else:
+                # create a LinkPreviewOptions object
+                link_preview_options = types.LinkPreviewOptions(
+                    is_disabled=disable_web_page_preview
+                )
 
+        if link_preview_options and (link_preview_options.is_disabled is None):
+            link_preview_options.is_disabled = self.disable_web_page_preview
+
+        # Fix preview link options if link_preview_options not provided. Get param from class
+        if not link_preview_options and self.disable_web_page_preview:
             # create a LinkPreviewOptions object
-            link_preview_options = types.LinkPreviewOptions(
-                disable_web_page_preview=disable_web_page_preview
-            )
+            link_preview_options = types.LinkPreviewOptions(is_disabled=self.disable_web_page_preview)
 
         result = await asyncio_helper.edit_message_text(self.token, text, chat_id, message_id, inline_message_id, parse_mode,
                                              entities, reply_markup, link_preview_options)
@@ -5392,7 +5569,7 @@ class AsyncTeleBot:
         :param disable_notification: Sends the message silently. Users will receive a notification with no sound.
         :type disable_notification: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message 
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message 
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard, instructions to remove reply keyboard or to force a reply from the user.
@@ -5401,7 +5578,7 @@ class AsyncTeleBot:
         :param timeout: Timeout in seconds for waiting for a response from the bot.
         :type timeout: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if one of the specified replied-to messages is not found.
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if one of the specified replied-to messages is not found.
         :type allow_sending_without_reply: :obj:`bool`
 
         :param protect_content: Pass True, if content of the message needs to be protected from being viewed by the bot.
@@ -5418,17 +5595,27 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         result = await asyncio_helper.send_game(
             self.token, chat_id, game_short_name, disable_notification,
@@ -5602,7 +5789,7 @@ class AsyncTeleBot:
         :param disable_notification: Sends the message silently. Users will receive a notification with no sound.
         :type disable_notification: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
         :param reply_markup: A JSON-serialized object for an inline keyboard. If empty,
@@ -5616,7 +5803,7 @@ class AsyncTeleBot:
         :param timeout: Timeout of a request, defaults to None
         :type timeout: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the message should be sent even if the specified replied-to message is not found
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the message should be sent even if the specified replied-to message is not found
         :type allow_sending_without_reply: :obj:`bool`
 
         :param max_tip_amount: The maximum accepted amount for tips in the smallest units of the currency
@@ -5641,17 +5828,27 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         result = await asyncio_helper.send_invoice(
             self.token, chat_id, title, description, invoice_payload, provider_token,
@@ -5833,10 +6030,10 @@ class AsyncTeleBot:
         :param disable_notification: Sends the message silently. Users will receive a notification with no sound.
         :type disable_notification: :obj:`bool`
 
-        :param reply_to_message_id: If the message is a reply, ID of the original message
+        :param reply_to_message_id: Deprecated - Use reply_parameters instead. If the message is a reply, ID of the original message
         :type reply_to_message_id: :obj:`int`
 
-        :param allow_sending_without_reply: Pass True, if the poll allows multiple options to be voted simultaneously.
+        :param allow_sending_without_reply: Deprecated - Use reply_parameters instead. Pass True, if the poll allows multiple options to be voted simultaneously.
         :type allow_sending_without_reply: :obj:`bool`
 
         :param reply_markup: Additional interface options. A JSON-serialized object for an inline keyboard, custom reply keyboard,
@@ -5864,18 +6061,28 @@ class AsyncTeleBot:
         """
         disable_notification = self.disable_notification if (disable_notification is None) else disable_notification
         protect_content = self.protect_content if (protect_content is None) else protect_content
-        allow_sending_without_reply = self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+        
         explanation_parse_mode = self.parse_mode if (explanation_parse_mode is None) else explanation_parse_mode
 
-        if allow_sending_without_reply or reply_to_message_id:
+        if allow_sending_without_reply is not None:
+            logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        
+        if reply_to_message_id:
             # show a deprecation warning
-            logger.warning("The parameters 'allow_sending_without_reply' and 'reply_to_message_id' are deprecated. Use 'reply_parameters' instead.")
+            logger.warning("The parameter 'reply_to_message_id' is deprecated. Use 'reply_parameters' instead.")
 
-            # create a ReplyParameters object
-            reply_parameters = types.ReplyParameters(
-                allow_sending_without_reply=allow_sending_without_reply,
-                message_id=reply_to_message_id
-            )
+            if reply_parameters:
+                # show a conflict warning
+                logger.warning("Both 'reply_parameters' and 'reply_to_message_id' parameters are set: conflicting, 'reply_to_message_id' is deprecated")
+            else:
+                # create a ReplyParameters object
+                reply_parameters = types.ReplyParameters(
+                    reply_to_message_id,
+                    allow_sending_without_reply=self.allow_sending_without_reply if (allow_sending_without_reply is None) else allow_sending_without_reply
+                )
+
+        if reply_parameters and (reply_parameters.allow_sending_without_reply is None):
+            reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         if isinstance(question, types.Poll):
             raise RuntimeError("The send_poll signature was changed, please see send_poll function details.")
@@ -6013,7 +6220,7 @@ class AsyncTeleBot:
 
     async def reply_to(self, message: types.Message, text: str, **kwargs) -> types.Message:
         """
-        Convenience function for `send_message(message.chat.id, text, reply_to_message_id=message.message_id, **kwargs)`
+        Convenience function for `send_message(message.chat.id, text, reply_parameters=(message.message_id...), **kwargs)`
         
         :param message: Instance of :class:`telebot.types.Message`
         :type message: :obj:`types.Message`
@@ -6026,7 +6233,23 @@ class AsyncTeleBot:
         :return: On success, the sent Message is returned.
         :rtype: :class:`telebot.types.Message`
         """
-        return await self.send_message(message.chat.id, text, reply_to_message_id=message.message_id, **kwargs)
+        if kwargs:
+            reply_parameters = kwargs.pop("reply_parameters", None)
+            if "allow_sending_without_reply" in kwargs:
+                logger.warning("The parameter 'allow_sending_without_reply' is deprecated. Use 'reply_parameters' instead.")
+        else:
+            reply_parameters = None
+
+        if not reply_parameters:
+            reply_parameters = types.ReplyParameters(
+                message.message_id,
+                allow_sending_without_reply=kwargs.pop("allow_sending_without_reply", None) if kwargs else None
+            )
+
+        if not reply_parameters.message_id:
+            reply_parameters.message_id = message.message_id
+
+        return await self.send_message(message.chat.id, text, reply_parameters=reply_parameters, **kwargs)
 
     async def answer_inline_query(
             self, inline_query_id: str, 
