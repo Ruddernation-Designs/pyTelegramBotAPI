@@ -13,16 +13,16 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-
+from datetime import datetime
 
 # -- Project information -----------------------------------------------------
 
-project = 'pyTelegramBotAPI Documentation'
-copyright = '2022-2023, coder2020official'
+project = 'pyTelegramBotAPI'
 author = 'coder2020official'
+copyright = f'2022-{datetime.now().year}, {author}'
 
 # The full version, including alpha/beta/rc tags
-release = '4.16.1'
+release = '4.20.0'
 
 
 # -- General configuration ---------------------------------------------------

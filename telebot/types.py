@@ -9,11 +9,14 @@ from typing import Dict, List, Optional, Union
 from abc import ABC
 
 try:
+    # noinspection PyPackageRequirements
     import ujson as json
 except ImportError:
     import json
 
 from telebot import service_utils
+from telebot.formatting import apply_html_entities
+
 
 DISABLE_KEYLEN_ERROR = False
 
@@ -178,6 +181,18 @@ class Update(JsonDeserializable):
     :param removed_chat_boost: Optional. A chat boost was removed. The bot must be an administrator in the chat to receive these updates.
     :type removed_chat_boost: :class:`telebot.types.RemovedChatBoost`
 
+    :param business_connection: Optional. The bot was connected to or disconnected from a business account, or a user edited an existing connection with the bot
+    :type business_connection: :class:`telebot.types.BusinessConnection`
+
+    :param business_message: Optional. New non-service message from a connected business account
+    :type business_message: :class:`telebot.types.Message`
+
+    :param edited_business_message: Optional. New version of a non-service message from a connected business account that is known to the bot and was edited
+    :type edited_business_message: :class:`telebot.types.Message`
+
+    :param deleted_business_messages: Optional. Service message: the chat connected to the business account was deleted
+    :type deleted_business_messages: :class:`telebot.types.BusinessMessagesDeleted`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.Update`
 
@@ -205,13 +220,22 @@ class Update(JsonDeserializable):
         message_reaction_count = MessageReactionCountUpdated.de_json(obj.get('message_reaction_count'))
         removed_chat_boost = ChatBoostRemoved.de_json(obj.get('removed_chat_boost'))
         chat_boost = ChatBoostUpdated.de_json(obj.get('chat_boost'))
+        business_connection = BusinessConnection.de_json(obj.get('business_connection'))
+        business_message = Message.de_json(obj.get('business_message'))
+        edited_business_message = Message.de_json(obj.get('edited_business_message'))
+        deleted_business_messages = BusinessMessagesDeleted.de_json(obj.get('deleted_business_messages'))
+
         return cls(update_id, message, edited_message, channel_post, edited_channel_post, inline_query,
                    chosen_inline_result, callback_query, shipping_query, pre_checkout_query, poll, poll_answer,
-                   my_chat_member, chat_member, chat_join_request, message_reaction, message_reaction_count, removed_chat_boost, chat_boost)
+                   my_chat_member, chat_member, chat_join_request, message_reaction, message_reaction_count,
+                   removed_chat_boost, chat_boost, business_connection, business_message, edited_business_message,
+                   deleted_business_messages)
 
     def __init__(self, update_id, message, edited_message, channel_post, edited_channel_post, inline_query,
                  chosen_inline_result, callback_query, shipping_query, pre_checkout_query, poll, poll_answer,
-                 my_chat_member, chat_member, chat_join_request, message_reaction, message_reaction_count, removed_chat_boost, chat_boost):
+                 my_chat_member, chat_member, chat_join_request, message_reaction, message_reaction_count,
+                 removed_chat_boost, chat_boost, business_connection, business_message, edited_business_message,
+                 deleted_business_messages, **kwargs):
         self.update_id = update_id
         self.message = message
         self.edited_message = edited_message
@@ -231,6 +255,11 @@ class Update(JsonDeserializable):
         self.message_reaction_count = message_reaction_count
         self.removed_chat_boost = removed_chat_boost
         self.chat_boost = chat_boost
+        self.business_connection = business_connection
+        self.business_message = business_message
+        self.edited_business_message = edited_business_message
+        self.deleted_business_messages = deleted_business_messages
+
 
 
 class ChatMemberUpdated(JsonDeserializable):
@@ -258,6 +287,9 @@ class ChatMemberUpdated(JsonDeserializable):
         link events only.
     :type invite_link: :class:`telebot.types.ChatInviteLink`
 
+    :param via_join_request: Optional. True, if the user joined the chat after sending a direct join request without using an invite link and being approved by an administrator
+    :type via_join_request: :obj:`bool`
+
     :param via_chat_folder_invite_link: Optional. True, if the user joined the chat via a chat folder invite link
     :type via_chat_folder_invite_link: :obj:`bool`
 
@@ -275,7 +307,8 @@ class ChatMemberUpdated(JsonDeserializable):
         obj['invite_link'] = ChatInviteLink.de_json(obj.get('invite_link'))
         return cls(**obj)
     
-    def __init__(self, chat, from_user, date, old_chat_member, new_chat_member, invite_link=None, via_chat_folder_invite_link=None,
+    def __init__(self, chat, from_user, date, old_chat_member, new_chat_member, invite_link=None,
+                 via_join_request=None, via_chat_folder_invite_link=None,
                  **kwargs):
         self.chat: Chat = chat
         self.from_user: User = from_user
@@ -283,8 +316,9 @@ class ChatMemberUpdated(JsonDeserializable):
         self.old_chat_member: ChatMember = old_chat_member
         self.new_chat_member: ChatMember = new_chat_member
         self.invite_link: Optional[ChatInviteLink] = invite_link
+        self.via_join_request: Optional[bool] = via_join_request
         self.via_chat_folder_invite_link: Optional[bool] = via_chat_folder_invite_link
-    
+
     @property
     def difference(self) -> Dict[str, List]:
         """
@@ -457,6 +491,9 @@ class User(JsonDeserializable, Dictionaryable, JsonSerializable):
     :param supports_inline_queries: Optional. True, if the bot supports inline queries. Returned only in getMe.
     :type supports_inline_queries: :obj:`bool`
 
+    :param can_connect_to_business: Optional. True, if the bot can be connected to a Telegram Business account to receive its messages. Returned only in getMe.
+    :type can_connect_to_business: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.User`
     """
@@ -466,9 +503,10 @@ class User(JsonDeserializable, Dictionaryable, JsonSerializable):
         obj = cls.check_json(json_string, dict_copy=False)
         return cls(**obj)
 
-    def __init__(self, id, is_bot, first_name, last_name=None, username=None, language_code=None, 
+    # noinspection PyShadowingBuiltins
+    def __init__(self, id, is_bot, first_name, last_name=None, username=None, language_code=None,
                  can_join_groups=None, can_read_all_group_messages=None, supports_inline_queries=None, 
-                 is_premium=None, added_to_attachment_menu=None, **kwargs):
+                 is_premium=None, added_to_attachment_menu=None, can_connect_to_business=None, **kwargs):
         self.id: int = id
         self.is_bot: bool = is_bot
         self.first_name: str = first_name
@@ -480,7 +518,7 @@ class User(JsonDeserializable, Dictionaryable, JsonSerializable):
         self.supports_inline_queries: bool = supports_inline_queries
         self.is_premium: bool = is_premium
         self.added_to_attachment_menu: bool = added_to_attachment_menu
-
+        self.can_connect_to_business: bool = can_connect_to_business
 
     @property
     def full_name(self):
@@ -506,9 +544,11 @@ class User(JsonDeserializable, Dictionaryable, JsonSerializable):
                 'can_read_all_group_messages': self.can_read_all_group_messages,
                 'supports_inline_queries': self.supports_inline_queries,
                 'is_premium': self.is_premium,
-                'added_to_attachment_menu': self.added_to_attachment_menu}
+                'added_to_attachment_menu': self.added_to_attachment_menu,
+                'can_connect_to_business': self.can_connect_to_business}
 
 
+# noinspection PyShadowingBuiltins
 class GroupChat(JsonDeserializable):
     """
     :meta private:
@@ -524,7 +564,8 @@ class GroupChat(JsonDeserializable):
         self.title: str = title
 
 
-class Chat(JsonDeserializable):
+# noinspection PyShadowingBuiltins
+class ChatFullInfo(JsonDeserializable):
     """
     This object represents a chat.
 
@@ -553,107 +594,104 @@ class Chat(JsonDeserializable):
     :param is_forum: Optional. True, if the supergroup chat is a forum (has topics enabled)
     :type is_forum: :obj:`bool`
 
+    :param max_reaction_count: Optional. The maximum number of reactions that can be set on a message in the chat
+    :type max_reaction_count: :obj:`int`
+
     :param photo: Optional. Chat photo. Returned only in getChat.
     :type photo: :class:`telebot.types.ChatPhoto`
 
-    :param active_usernames: Optional. If non-empty, the list of all active chat usernames; for private chats, supergroups and channels.
-        Returned only in getChat.
+    :param active_usernames: Optional. If non-empty, the list of all active chat usernames; for private chats, supergroups and channels. Returned only in getChat.
     :type active_usernames: :obj:`list` of :obj:`str`
 
-    :param available_reactions: Optional. List of available chat reactions; for private chats, supergroups and channels.
-        Returned only in getChat.
+    :param birthdate: Optional. Birthdate of the other party in a private chat. Returned only in getChat.
+    :type birthdate: :obj:`str`
+
+    :param business_intro: Optional. Business intro for the chat. Returned only in getChat.
+    :type business_intro: :class:`telebot.types.BusinessIntro`
+
+    :param business_location: Optional. Business location for the chat. Returned only in getChat.
+    :type business_location: :class:`telebot.types.BusinessLocation`
+
+    :param business_opening_hours : Optional. Business opening hours for the chat. Returned only in getChat.
+    :type business_opening_hours: :class:`telebot.types.BusinessHours`
+
+    :param personal_chat: Optional. For private chats, the personal channel of the user. Returned only in getChat.
+    :type personal_chat: :class:`telebot.types.Chat`
+
+    :param available_reactions: Optional. List of available chat reactions; for private chats, supergroups and channels. Returned only in getChat.
     :type available_reactions: :obj:`list` of :class:`telebot.types.ReactionType`
 
     :param accent_color_id: Optional. Optional. Identifier of the accent color for the chat name and backgrounds of the chat photo,
         reply header, and link preview. See accent colors for more details. Returned only in getChat. Always returned in getChat.
     :type accent_color_id: :obj:`int`
 
-    :param background_custom_emoji_id: Optional. Custom emoji identifier of emoji chosen by the chat for the reply header
-        and link preview background. Returned only in getChat.
+    :param background_custom_emoji_id: Optional. Custom emoji identifier of emoji chosen by the chat for the reply header and link preview background. Returned only in getChat.
     :type background_custom_emoji_id: :obj:`str`
 
-    :param profile_accent_color_id: Optional. Identifier of the accent color for the chat's profile background.
-        See profile accent colors for more details. Returned only in getChat.
+    :param profile_accent_color_id: Optional. Identifier of the accent color for the chat's profile background. See profile accent colors for more details. Returned only in getChat.
     :type profile_accent_color_id: :obj:`int`
 
-    :param profile_background_custom_emoji_id: Optional. Custom emoji identifier of the emoji chosen by the chat for its profile background.
-        Returned only in getChat.
+    :param profile_background_custom_emoji_id: Optional. Custom emoji identifier of the emoji chosen by the chat for its profile background. Returned only in getChat.
     :type profile_background_custom_emoji_id: :obj:`str`
 
-    :param emoji_status_custom_emoji_id: Optional. Custom emoji identifier of emoji status of the other party in a private chat.
-        Returned only in getChat.
+    :param emoji_status_custom_emoji_id: Optional. Custom emoji identifier of emoji status of the other party in a private chat. Returned only in getChat.
     :type emoji_status_custom_emoji_id: :obj:`str`
 
-    :param emoji_status_expiration_date: Optional. Expiration date of the emoji status of the other party in a private chat,
-        if any. Returned only in getChat.
+    :param emoji_status_expiration_date: Optional. Expiration date of the emoji status of the other party in a private chat, if any. Returned only in getChat.
     :type emoji_status_expiration_date: :obj:`int`
 
     :param bio: Optional. Bio of the other party in a private chat. Returned only in getChat.
     :type bio: :obj:`str`
 
-    :param has_private_forwards: Optional. :obj:`bool`, if privacy settings of the other party in the private chat 
-        allows to use tg://user?id=<user_id> links only in chats with the user. Returned only in getChat.
+    :param has_private_forwards: Optional. :obj:`bool`, if privacy settings of the other party in the private chat allows to use tg://user?id=<user_id> links only in chats with the user. Returned only in getChat.
     :type has_private_forwards: :obj:`bool`
 
-    :param has_restricted_voice_and_video_messages: Optional. True, if the privacy settings of the other party restrict sending voice and video note messages
-        in the private chat. Returned only in getChat.
+    :param has_restricted_voice_and_video_messages: Optional. True, if the privacy settings of the other party restrict sending voice and video note messages in the private chat. Returned only in getChat.
     :type :obj:`bool`
 
-    :param join_to_send_messages: Optional. :obj:`bool`, if users need to join the supergroup before they can send 
-        messages. Returned only in getChat.
+    :param join_to_send_messages: Optional. :obj:`bool`, if users need to join the supergroup before they can send messages. Returned only in getChat.
     :type join_to_send_messages: :obj:`bool`
 
-    :param join_by_request: Optional. :obj:`bool`, if all users directly joining the supergroup need to be approved 
-        by supergroup administrators. Returned only in getChat.
+    :param join_by_request: Optional. :obj:`bool`, if all users directly joining the supergroup need to be approved by supergroup administrators. Returned only in getChat.
     :type join_by_request: :obj:`bool`
 
     :param description: Optional. Description, for groups, supergroups and channel chats. Returned only in getChat.
     :type description: :obj:`str`
 
-    :param invite_link: Optional. Primary invite link, for groups, supergroups and channel chats. Returned only in 
-        getChat.
+    :param invite_link: Optional. Primary invite link, for groups, supergroups and channel chats. Returned only in getChat.
     :type invite_link: :obj:`str`
 
     :param pinned_message: Optional. The most recent pinned message (by sending date). Returned only in getChat.
     :type pinned_message: :class:`telebot.types.Message`
 
-    :param permissions: Optional. Default chat member permissions, for groups and supergroups. Returned only in 
-        getChat.
+    :param permissions: Optional. Default chat member permissions, for groups and supergroups. Returned only in getChat.
     :type permissions: :class:`telebot.types.ChatPermissions`
 
-    :param slow_mode_delay: Optional. For supergroups, the minimum allowed delay between consecutive messages sent 
-        by each unpriviledged user; in seconds. Returned only in getChat.
+    :param slow_mode_delay: Optional. For supergroups, the minimum allowed delay between consecutive messages sent by each unpriviledged user; in seconds. Returned only in getChat.
     :type slow_mode_delay: :obj:`int`
 
-    :param unrestrict_boost_count: Optional. For supergroups, the minimum number of boosts that a non-administrator
-        user needs to add in order to ignore slow mode and chat permissions. Returned only in getChat.
+    :param unrestrict_boost_count: Optional. For supergroups, the minimum number of boosts that a non-administrator user needs to add in order to ignore slow mode and chat permissions. Returned only in getChat.
     :type unrestrict_boost_count: :obj:`int`
 
-    :param message_auto_delete_time: Optional. The time after which all messages sent to the chat will be 
-        automatically deleted; in seconds. Returned only in getChat.
+    :param message_auto_delete_time: Optional. The time after which all messages sent to the chat will be automatically deleted; in seconds. Returned only in getChat.
     :type message_auto_delete_time: :obj:`int`
 
-    :param has_aggressive_anti_spam_enabled: Optional. :obj:`bool`, if the chat has enabled aggressive anti-spam
-        protection. Returned only in getChat.
+    :param has_aggressive_anti_spam_enabled: Optional. :obj:`bool`, if the chat has enabled aggressive anti-spam protection. Returned only in getChat.
     :type has_aggressive_anti_spam_enabled: :obj:`bool`
 
-    :param has_hidden_members: Optional. :obj:`bool`, if the chat has enabled hidden members. Returned only in
-        getChat.
+    :param has_hidden_members: Optional. :obj:`bool`, if the chat has enabled hidden members. Returned only in getChat.
     :type has_hidden_members: :obj:`bool`
 
-    :param has_protected_content: Optional. :obj:`bool`, if messages from the chat can't be forwarded to other 
-        chats. Returned only in getChat.
+    :param has_protected_content: Optional. :obj:`bool`, if messages from the chat can't be forwarded to other chats. Returned only in getChat.
     :type has_protected_content: :obj:`bool`
 
-    :param has_visible_history: Optional. True, if new chat members will have access to old messages;
-        available only to chat administrators. Returned only in getChat.
+    :param has_visible_history: Optional. True, if new chat members will have access to old messages; available only to chat administrators. Returned only in getChat.
     :type has_visible_history: :obj:`bool`
 
     :param sticker_set_name: Optional. For supergroups, name of group sticker set. Returned only in getChat.
     :type sticker_set_name: :obj:`str`
 
-    :param can_set_sticker_set: Optional. :obj:`bool`, if the bot can change the group sticker set. Returned only in 
-        getChat.
+    :param can_set_sticker_set: Optional. :obj:`bool`, if the bot can change the group sticker set. Returned only in getChat.
     :type can_set_sticker_set: :obj:`bool`
 
     :param custom_emoji_sticker_set_name: Optional. For supergroups, the name of the group's custom emoji sticker set.
@@ -666,12 +704,11 @@ class Chat(JsonDeserializable):
         signed 64 bit integer or double-precision float type are safe for storing this identifier. Returned only in getChat.
     :type linked_chat_id: :obj:`int`
 
-    :param location: Optional. For supergroups, the location to which the supergroup is connected. Returned only in 
-        getChat.
+    :param location: Optional. For supergroups, the location to which the supergroup is connected. Returned only in getChat.
     :type location: :class:`telebot.types.ChatLocation`
 
     :return: Instance of the class
-    :rtype: :class:`telebot.types.Chat`
+    :rtype: :class:`telebot.types.ChatFullInfo`
     """
     @classmethod
     def de_json(cls, json_string):
@@ -687,6 +724,16 @@ class Chat(JsonDeserializable):
             obj['location'] = ChatLocation.de_json(obj['location'])
         if 'available_reactions' in obj:
             obj['available_reactions'] = [ReactionType(reaction) for reaction in obj['available_reactions']]
+        if 'business_intro' in obj:
+            obj['business_intro'] = BusinessIntro.de_json(obj['business_intro'])
+        if 'business_location' in obj:
+            obj['business_location'] = BusinessLocation.de_json(obj['business_location'])
+        if 'business_opening_hours' in obj:
+            obj['business_opening_hours'] = BusinessOpeningHours.de_json(obj['business_opening_hours'])
+        if 'personal_chat' in obj:
+            obj['personal_chat'] = Chat.de_json(obj['personal_chat'])
+        if 'birthdate' in obj:
+            obj['birthdate'] = Birthdate.de_json(obj['birthdate'])
         return cls(**obj)
 
     def __init__(self, id, type, title=None, username=None, first_name=None,
@@ -696,11 +743,12 @@ class Chat(JsonDeserializable):
                  message_auto_delete_time=None, has_protected_content=None, sticker_set_name=None,
                  can_set_sticker_set=None, linked_chat_id=None, location=None, 
                  join_to_send_messages=None, join_by_request=None, has_restricted_voice_and_video_messages=None, 
-                 is_forum=None, active_usernames=None, emoji_status_custom_emoji_id=None,
+                 is_forum=None, max_reaction_count=None, active_usernames=None, emoji_status_custom_emoji_id=None,
                  has_hidden_members=None, has_aggressive_anti_spam_enabled=None, emoji_status_expiration_date=None, 
                  available_reactions=None, accent_color_id=None, background_custom_emoji_id=None, profile_accent_color_id=None,
                  profile_background_custom_emoji_id=None, has_visible_history=None, 
-                 unrestrict_boost_count=None, custom_emoji_sticker_set_name=None, **kwargs):
+                 unrestrict_boost_count=None, custom_emoji_sticker_set_name=None, business_intro=None, business_location=None,
+                    business_opening_hours=None, personal_chat=None, birthdate=None, **kwargs):
         self.id: int = id
         self.type: str = type
         self.title: str = title
@@ -708,6 +756,7 @@ class Chat(JsonDeserializable):
         self.first_name: str = first_name
         self.last_name: str = last_name
         self.is_forum: bool = is_forum
+        self.max_reaction_count: int = max_reaction_count
         self.photo: ChatPhoto = photo
         self.bio: str = bio
         self.join_to_send_messages: bool = join_to_send_messages
@@ -738,7 +787,23 @@ class Chat(JsonDeserializable):
         self.has_visible_history: bool = has_visible_history
         self.unrestrict_boost_count: int = unrestrict_boost_count
         self.custom_emoji_sticker_set_name: str = custom_emoji_sticker_set_name
+        self.business_intro: BusinessIntro = business_intro
+        self.business_location: BusinessLocation = business_location
+        self.business_opening_hours: BusinessOpeningHours = business_opening_hours
+        self.personal_chat: Chat = personal_chat
+        self.birthdate: Birthdate = birthdate
 
+
+class Chat(ChatFullInfo):
+    """
+    In BotAPI 7.3 Chat was reduced and full info moved to ChatFullInfo:
+    "Split out the class ChatFullInfo from the class Chat and changed the return type of the method getChat to ChatFullInfo."
+
+    https://core.telegram.org/bots/api#chatfullinfo
+
+    Currently Chat is left as full copy of ChatFullInfo for compatibility.
+    """
+    pass
 
 
 class MessageID(JsonDeserializable):
@@ -819,30 +884,18 @@ class Message(JsonDeserializable):
     :param sender_boost_count: Optional. If the sender of the message boosted the chat, the number of boosts added by the user
     :type sender_boost_count: :obj:`int`
 
+    :param sender_business_bot info: Optional. Information about the business bot that sent the message
+    :type sender_business_bot_info: :class:`telebot.types.User`
+
     :param date: Date the message was sent in Unix time
     :type date: :obj:`int`
 
+    :param business_connection_id: Optional. Unique identifier of the business connection from which the message was received. If non-empty,
+        the message belongs to a chat of the corresponding business account that is independent from any potential bot chat which might share the same identifier.
+    :type business_connection_id: :obj:`str`
+
     :param chat: Conversation the message belongs to
     :type chat: :class:`telebot.types.Chat`
-
-    :param forward_from: deprecated.
-    :type forward_from: :class:`telebot.types.User`
-
-    :param forward_from_chat: deprecated.
-    :type forward_from_chat: :class:`telebot.types.Chat`
-
-    :param forward_from_message_id: deprecated.
-        message in the channel
-    :type forward_from_message_id: :obj:`int`
-
-    :param forward_signature: deprecated.
-    :type forward_signature: :obj:`str`
-
-    :param forward_sender_name: deprecated.
-    :type forward_sender_name: :obj:`str`
-
-    :param forward_date: deprecated.
-    :type forward_date: :obj:`int`
 
     :forward_origin: Optional. For forwarded messages, information about the original message;
     :type forward_origin: :class:`telebot.types.MessageOrigin`
@@ -876,6 +929,10 @@ class Message(JsonDeserializable):
     :param has_protected_content: Optional. :obj:`bool`, if the message can't be forwarded
     :type has_protected_content: :obj:`bool`
 
+    :param is_from_offline: Optional. True, if the message was sent by an implicit action, for example,
+        as an away or a greeting business message, or as a scheduled message
+    :type is_from_offline: :obj:`bool`
+
     :param media_group_id: Optional. The unique identifier of a media message group this message belongs to
     :type media_group_id: :obj:`str`
 
@@ -893,6 +950,9 @@ class Message(JsonDeserializable):
     :param link_preview_options: Optional. Options used for link preview generation for the message,
         if it is a text message and link preview options were changed
     :type link_preview_options: :class:`telebot.types.LinkPreviewOptions`
+
+    :param effect_id: Optional. Unique identifier of the message effect added to the message
+    :type effect_id: :obj:`str`
 
     :param animation: Optional. Message is an animation, information about the animation. For backward
         compatibility, when this field is set, the document field will also be set
@@ -928,6 +988,9 @@ class Message(JsonDeserializable):
     :param caption_entities: Optional. For messages with a caption, special entities like usernames, URLs, bot
         commands, etc. that appear in the caption
     :type caption_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
+
+    :param show_caption_above_media: Optional. True, if the caption must be shown above the message media
+    :type show_caption_above_media: :obj:`bool`
 
     :param has_media_spoiler: Optional. True, if the message media is covered by a spoiler animation
     :type has_media_spoiler: :obj:`bool`
@@ -1032,6 +1095,9 @@ class Message(JsonDeserializable):
     :param boost_added: Optional. Service message: user boosted the chat
     :type boost_added: :class:`telebot.types.ChatBoostAdded`
 
+    :param chat_background_set: Optional. Service message: chat background set
+    :type chat_background_set: :class:`telebot.types.ChatBackground`
+
     :param forum_topic_created: Optional. Service message: forum topic created
     :type forum_topic_created: :class:`telebot.types.ForumTopicCreated`
 
@@ -1077,8 +1143,7 @@ class Message(JsonDeserializable):
     :param web_app_data: Optional. Service message: data sent by a Web App
     :type web_app_data: :class:`telebot.types.WebAppData`
 
-    :param reply_markup: Optional. Inline keyboard attached to the message. login_url buttons are represented as
-        ordinary url buttons.
+    :param reply_markup: Optional. Inline keyboard attached to the message. login_url buttons are represented as ordinary url buttons.
     :type reply_markup: :class:`telebot.types.InlineKeyboardMarkup`
 
     :return: Instance of the class
@@ -1243,6 +1308,9 @@ class Message(JsonDeserializable):
             content_type = 'message_auto_delete_timer_changed'
         if 'reply_markup' in obj:
             opts['reply_markup'] = InlineKeyboardMarkup.de_json(obj['reply_markup'])
+        if 'chat_background_set' in obj:
+            opts['chat_background_set'] = ChatBackground.de_json(obj['chat_background_set'])
+            content_type = 'chat_background_set'
         if 'forum_topic_created' in obj:
             opts['forum_topic_created'] = ForumTopicCreated.de_json(obj['forum_topic_created'])
             content_type = 'forum_topic_created'
@@ -1302,6 +1370,17 @@ class Message(JsonDeserializable):
             opts['sender_boost_count'] = obj['sender_boost_count']
         if 'reply_to_story' in obj:
             opts['reply_to_story'] = Story.de_json(obj['reply_to_story'])
+        if 'sender_business_bot' in obj:
+            opts['sender_business_bot'] = User.de_json(obj['sender_business_bot'])
+        if 'business_connection_id' in obj:
+            opts['business_connection_id'] = obj['business_connection_id']
+        if 'is_from_offline' in obj:
+            opts['is_from_offline'] = obj['is_from_offline']
+        if 'effect_id' in obj:
+            opts['effect_id'] = obj['effect_id']
+        if 'show_caption_above_media' in obj:
+            opts['show_caption_above_media'] = obj['show_caption_above_media']
+
 
 
         return cls(message_id, from_user, date, chat, content_type, opts, json_string)
@@ -1384,6 +1463,7 @@ class Message(JsonDeserializable):
         self.reply_markup: Optional[InlineKeyboardMarkup] = None
         self.message_thread_id: Optional[int] = None
         self.is_topic_message: Optional[bool] = None
+        self.chat_background_set: Optional[ChatBackground] = None
         self.forum_topic_created: Optional[ForumTopicCreated] = None
         self.forum_topic_closed: Optional[ForumTopicClosed] = None
         self.forum_topic_reopened: Optional[ForumTopicReopened] = None
@@ -1406,122 +1486,29 @@ class Message(JsonDeserializable):
         self.boost_added: Optional[ChatBoostAdded] = None
         self.sender_boost_count: Optional[int] = None
         self.reply_to_story: Optional[Story] = None
+        self.sender_business_bot: Optional[User] = None
+        self.business_connection_id: Optional[str] = None
+        self.is_from_offline: Optional[bool] = None
+        self.effect_id: Optional[str] = None
+        self.show_caption_above_media: Optional[bool] = None
 
         for key in options:
             setattr(self, key, options[key])
         self.json = json_string
-
-
-    def __html_text(self, text, entities):
-        """
-        Author: @sviat9440
-        Updaters: @badiboy
-        Message: "*Test* parse _formatting_, [url](https://example.com), [text_mention](tg://user?id=123456) and mention @username"
-
-        .. code-block:: python3
-            :caption: Example:
-
-            message.html_text
-            >> "<b>Test</b> parse <i>formatting</i>, <a href=\"https://example.com\">url</a>, <a href=\"tg://user?id=123456\">text_mention</a> and mention @username"
-
-        Custom subs:
-            You can customize the substitutes. By default, there is no substitute for the entities: hashtag, bot_command, email. You can add or modify substitute an existing entity.
-        .. code-block:: python3
-            :caption: Example:
-
-            message.custom_subs = {"bold": "<strong class=\"example\">{text}</strong>", "italic": "<i class=\"example\">{text}</i>", "mention": "<a href={url}>{text}</a>"}
-            message.html_text
-            >> "<strong class=\"example\">Test</strong> parse <i class=\"example\">formatting</i>, <a href=\"https://example.com\">url</a> and <a href=\"tg://user?id=123456\">text_mention</a> and mention <a href=\"https://t.me/username\">@username</a>"
-        """
-
-        if not entities:
-            return text
-
-        _subs = {
-            "bold": "<b>{text}</b>",
-            "italic": "<i>{text}</i>",
-            "pre": "<pre>{text}</pre>",
-            "code": "<code>{text}</code>",
-            # "url": "<a href=\"{url}\">{text}</a>", # @badiboy plain URLs have no text and do not need tags
-            "text_link": "<a href=\"{url}\">{text}</a>",
-            "strikethrough": "<s>{text}</s>",
-            "underline":     "<u>{text}</u>",
-            "spoiler": "<span class=\"tg-spoiler\">{text}</span>",
-            "custom_emoji": "<tg-emoji emoji-id=\"{custom_emoji_id}\">{text}</tg-emoji>",
-            "blockquote": "<blockquote>{text}</blockquote>",
-        }
-         
-        if hasattr(self, "custom_subs"):
-            for key, value in self.custom_subs.items():
-                _subs[key] = value
-        utf16_text = text.encode("utf-16-le")
-        html_text = ""
-
-        def func(upd_text, subst_type=None, url=None, user=None, custom_emoji_id=None):
-            upd_text = upd_text.decode("utf-16-le")
-            if subst_type == "text_mention":
-                subst_type = "text_link"
-                url = "tg://user?id={0}".format(user.id)
-            elif subst_type == "mention":
-                url = "https://t.me/{0}".format(upd_text[1:])
-            upd_text = upd_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            if not subst_type or not _subs.get(subst_type):
-                return upd_text
-            subs = _subs.get(subst_type)
-            if subst_type == "custom_emoji":
-                return subs.format(text=upd_text, custom_emoji_id=custom_emoji_id)
-            return subs.format(text=upd_text, url=url)
-
-        offset = 0
-        start_index = 0
-        end_index = 0
-        for entity in entities:
-            if entity.offset > offset:
-                # when the offset is not 0: for example, a __b__ 
-                # we need to add the text before the entity to the html_text
-                html_text += func(utf16_text[offset * 2 : entity.offset * 2])
-                offset = entity.offset
-
-                new_string = func(utf16_text[offset * 2 : (offset + entity.length) * 2], subst_type=entity.type, url=entity.url, user=entity.user, custom_emoji_id=entity.custom_emoji_id)
-                start_index = len(html_text)
-                html_text += new_string
-                offset += entity.length
-                end_index = len(html_text)
-            elif entity.offset == offset:
-                new_string = func(utf16_text[offset * 2 : (offset + entity.length) * 2], subst_type=entity.type, url=entity.url, user=entity.user, custom_emoji_id=entity.custom_emoji_id)
-                start_index = len(html_text)
-                html_text += new_string
-                end_index = len(html_text)
-                offset += entity.length
-            else:
-                # Here we are processing nested entities.
-                # We shouldn't update offset, because they are the same as entity before.
-                # And, here we are replacing previous string with a new html-rendered text(previous string is already html-rendered,
-                # And we don't change it).
-                entity_string = html_text[start_index : end_index].encode("utf-16-le")
-                formatted_string = func(entity_string, subst_type=entity.type, url=entity.url, user=entity.user, custom_emoji_id=entity.custom_emoji_id).\
-                                        replace("&amp;", "&").replace("&lt;", "<").replace("&gt;",">")
-                html_text = html_text[:start_index] + formatted_string + html_text[end_index:]
-                end_index = len(html_text)
-
-        if offset * 2 < len(utf16_text):
-            html_text += func(utf16_text[offset * 2:])
-
-        return html_text
 
     @property
     def html_text(self):
         """
         Returns html-rendered text.
         """
-        return self.__html_text(self.text, self.entities)
+        return apply_html_entities(self.text, self.entities, getattr(self, "custom_subs", None))
 
     @property
     def html_caption(self):
         """
         Returns html-rendered caption.
         """
-        return self.__html_text(self.caption, self.caption_entities)
+        return apply_html_entities(self.caption, self.caption_entities, getattr(self, "custom_subs", None))
 
     @property
     def voice_chat_scheduled(self):
@@ -1604,18 +1591,19 @@ class Message(JsonDeserializable):
         return self.users_shared
 
 
+# noinspection PyShadowingBuiltins
 class MessageEntity(Dictionaryable, JsonSerializable, JsonDeserializable):
     """
     This object represents one special entity in a text message. For example, hashtags, usernames, URLs, etc.
 
     Telegram Documentation: https://core.telegram.org/bots/api#messageentity
 
-    :param type: Type of the entity. Currently, can be “mention” (@username), “hashtag” (#hashtag), “cashtag” 
-        ($USD), “bot_command” (/start@jobs_bot), “url” (https://telegram.org), “email” 
-        (do-not-reply@telegram.org), “phone_number” (+1-212-555-0123), “bold” (bold text), “italic” (italic text), 
-        “underline” (underlined text), “strikethrough” (strikethrough text), “spoiler” (spoiler message), “code” 
-        (monowidth string), “pre” (monowidth block), “text_link” (for clickable text URLs), “text_mention” (for users 
-        without usernames), “custom_emoji” (for inline custom emoji stickers)
+    :param type: Type of the entity. Currently, can be “mention” (@username), “hashtag” (#hashtag), “cashtag” ($USD),
+        “bot_command” (/start@jobs_bot),“url” (https://telegram.org), “email” (do-not-reply@telegram.org), “phone_number” (+1-212-555-0123),
+        “bold” (bold text), “italic” (italic text), “underline” (underlined text), “strikethrough” (strikethrough text),
+        “spoiler” (spoiler message), “blockquote” (block quotation), “expandable_blockquote” (collapsed-by-default block quotation),
+        “code” (monowidth string), “pre” (monowidth block), “text_link” (for clickable text URLs),
+        “text_mention” (for users without usernames), “custom_emoji” (for inline custom emoji stickers)
     :type type: :obj:`str`
 
     :param offset: Offset in UTF-16 code units to the start of the entity
@@ -1645,10 +1633,12 @@ class MessageEntity(Dictionaryable, JsonSerializable, JsonDeserializable):
         """
         Converts a list of MessageEntity objects to a list of dictionaries.
         """
-        res = []
-        for e in entity_list:
-            res.append(MessageEntity.to_dict(e))
-        return res or None
+        if entity_list is None or len(entity_list) == 0:
+            return None
+        elif isinstance(entity_list[0], MessageEntity):
+            return [MessageEntity.to_dict(e) for e in entity_list]
+        else:
+            return entity_list
 
     @classmethod
     def de_json(cls, json_string):
@@ -1675,8 +1665,8 @@ class MessageEntity(Dictionaryable, JsonSerializable, JsonDeserializable):
                 "offset": self.offset,
                 "length": self.length,
                 "url": self.url,
-                "user": self.user,
-                "language":  self.language,
+                "user": self.user.to_dict() if self.user else None,
+                "language": self.language,
                 "custom_emoji_id": self.custom_emoji_id}
 
 
@@ -2479,20 +2469,20 @@ class ReplyKeyboardMarkup(JsonSerializable):
         return json.dumps(json_dict)
 
 
+# noinspection PyShadowingBuiltins
 class KeyboardButtonPollType(Dictionaryable):
     """
     This object represents type of a poll, which is allowed to be created and sent when the corresponding button is pressed.
 
     Telegram Documentation: https://core.telegram.org/bots/api#keyboardbuttonpolltype
 
-    :param type: Optional. If quiz is passed, the user will be allowed to create only polls in the quiz mode. If regular is 
-        passed, only regular polls will be allowed. Otherwise, the user will be allowed to create a poll of any type.
+    :param type: Optional. If quiz is passed, the user will be allowed to create only polls in the quiz mode. If regular is passed, only regular polls will be allowed. Otherwise, the user will be allowed to create a poll of any type.
     :type type: :obj:`str`
 
     :return: Instance of the class
     :rtype: :class:`telebot.types.KeyboardButtonPollType`
     """
-    def __init__(self, type=''):
+    def __init__(self, type=None):
         self.type: str = type
 
     def to_dict(self):
@@ -2521,16 +2511,29 @@ class KeyboardButtonRequestUsers(Dictionaryable):
     :param max_quantity: Optional. The maximum number of users to be selected; 1-10. Defaults to 1.
     :type max_quantity: :obj:`int`
 
+    :param request_name: Optional. Request name
+    :type request_name: :obj:`bool`
+
+    :param request_username: Optional. Request username
+    :type request_username: :obj:`bool`
+
+    :param request_photo: Optional. Request photo
+    :type request_photo: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.KeyboardButtonRequestUsers`
     """
     def __init__(
             self, request_id: int, user_is_bot: Optional[bool]=None, user_is_premium: Optional[bool]=None,
-            max_quantity: Optional[int]=None) -> None:
+            max_quantity: Optional[int]=None, request_name: Optional[str]=None, request_username: Optional[bool]=None,
+            request_photo: Optional[bool]=None) -> None:
         self.request_id: int = request_id
         self.user_is_bot: Optional[bool] = user_is_bot
         self.user_is_premium: Optional[bool] = user_is_premium
         self.max_quantity: Optional[int] = max_quantity
+        self.request_name: Optional[str] = request_name
+        self.request_username: Optional[bool] = request_username
+        self.request_photo: Optional[bool] = request_photo
 
     def to_dict(self) -> dict:
         data = {'request_id': self.request_id}
@@ -2540,6 +2543,12 @@ class KeyboardButtonRequestUsers(Dictionaryable):
             data['user_is_premium'] = self.user_is_premium
         if self.max_quantity is not None:
             data['max_quantity'] = self.max_quantity
+        if self.request_name is not None:
+            data['request_name'] = self.request_name
+        if self.request_username is not None:
+            data['request_username'] = self.request_username
+        if self.request_photo is not None:
+            data['request_photo'] = self.request_photo
         return data
 
 
@@ -2588,6 +2597,15 @@ class KeyboardButtonRequestChat(Dictionaryable):
     :param bot_is_member: Optional. Pass True to request a chat where the bot is a member. Otherwise, no additional restrictions are applied.
     :type bot_is_member: :obj:`bool`
 
+    :param request_title: Optional. Request title
+    :type request_title: :obj:`bool`
+
+    :param request_photo: Optional. Request photo
+    :type request_photo: :obj:`bool`
+
+    :param request_username: Optional. Request username
+    :type request_username: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.KeyboardButtonRequestChat`
     """
@@ -2595,7 +2613,8 @@ class KeyboardButtonRequestChat(Dictionaryable):
     def __init__(self, request_id: int, chat_is_channel: bool, chat_is_forum: Optional[bool]=None,
                  chat_has_username: Optional[bool]=None, chat_is_created: Optional[bool]=None,
                  user_administrator_rights: Optional[ChatAdministratorRights]=None,
-                 bot_administrator_rights: Optional[ChatAdministratorRights]=None, bot_is_member: Optional[bool]=None) -> None:
+                 bot_administrator_rights: Optional[ChatAdministratorRights]=None, bot_is_member: Optional[bool]=None,
+                 request_title: Optional[str]=None, request_photo: Optional[bool]=None, request_username: Optional[bool]=None):
         self.request_id: int = request_id
         self.chat_is_channel: bool = chat_is_channel
         self.chat_is_forum: Optional[bool] = chat_is_forum
@@ -2604,6 +2623,9 @@ class KeyboardButtonRequestChat(Dictionaryable):
         self.user_administrator_rights: Optional[ChatAdministratorRights] = user_administrator_rights
         self.bot_administrator_rights: Optional[ChatAdministratorRights] = bot_administrator_rights
         self.bot_is_member: Optional[bool] = bot_is_member
+        self.request_title: Optional[str] = request_title
+        self.request_photo: Optional[bool] = request_photo
+        self.request_username: Optional[bool] = request_username
 
 
     def to_dict(self) -> dict:
@@ -2620,6 +2642,12 @@ class KeyboardButtonRequestChat(Dictionaryable):
             data['bot_administrator_rights'] = self.bot_administrator_rights.to_dict()
         if self.bot_is_member is not None:
             data['bot_is_member'] = self.bot_is_member
+        if self.request_title is not None:
+            data['request_title'] = self.request_title
+        if self.request_photo is not None:
+            data['request_photo'] = self.request_photo
+        if self.request_username is not None:
+            data['request_username'] = self.request_username
         return data
 
 
@@ -2971,6 +2999,7 @@ class LoginUrl(Dictionaryable, JsonSerializable, JsonDeserializable):
         return json_dict
 
 
+# noinspection PyShadowingBuiltins
 class CallbackQuery(JsonDeserializable):
     """
     This object represents an incoming callback query from a callback button in an inline keyboard. If the button that originated the query was attached to a message sent by the bot, the field message will be present. If the button was attached to a message sent via the bot (in inline mode), the field inline_message_id will be present. Exactly one of the fields data or game_short_name will be present.
@@ -3565,6 +3594,7 @@ class BotCommand(JsonSerializable, JsonDeserializable, Dictionaryable):
 
 # BotCommandScopes
 
+# noinspection PyShadowingBuiltins
 class BotCommandScope(ABC, JsonSerializable):
     """
     This object represents the scope to which bot commands are applied. Currently, the following 7 scopes are supported:
@@ -3770,6 +3800,7 @@ class BotCommandScopeChatMember(BotCommandScope):
 
 # InlineQuery
 
+# noinspection PyShadowingBuiltins
 class InlineQuery(JsonDeserializable):
     """
     This object represents an incoming inline query. When the user sends an empty query, your bot could return some default or trending results.
@@ -3885,16 +3916,13 @@ class InputLocationMessageContent(Dictionaryable):
     :param horizontal_accuracy: Optional. The radius of uncertainty for the location, measured in meters; 0-1500
     :type horizontal_accuracy: :obj:`float` number
 
-    :param live_period: Optional. Period in seconds for which the location can be updated, should be between 60 and 
-        86400.
+    :param live_period: Optional. Period in seconds during which the location can be updated, should be between 60 and 86400, or 0x7FFFFFFF for live locations that can be edited indefinitely.
     :type live_period: :obj:`int`
 
-    :param heading: Optional. For live locations, a direction in which the user is moving, in degrees. Must be between 1 
-        and 360 if specified.
+    :param heading: Optional. For live locations, a direction in which the user is moving, in degrees. Must be between 1 and 360 if specified.
     :type heading: :obj:`int`
 
-    :param proximity_alert_radius: Optional. For live locations, a maximum distance for proximity alerts about 
-        approaching another chat member, in meters. Must be between 1 and 100000 if specified.
+    :param proximity_alert_radius: Optional. For live locations, a maximum distance for proximity alerts about approaching another chat member, in meters. Must be between 1 and 100000 if specified.
     :type proximity_alert_radius: :obj:`int`
 
     :return: Instance of the class
@@ -4299,7 +4327,7 @@ class SentWebAppMessage(JsonDeserializable, Dictionaryable):
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultArticle(InlineQueryResultBase):
     """
     Represents a link to an article or web page.
@@ -4384,7 +4412,7 @@ class InlineQueryResultArticle(InlineQueryResultBase):
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultPhoto(InlineQueryResultBase):
     """
     Represents a link to a photo. By default, this photo will be sent by the user with optional caption. Alternatively, you can use input_message_content to send a message with the specified content instead of the photo.
@@ -4432,11 +4460,15 @@ class InlineQueryResultPhoto(InlineQueryResultBase):
     :param input_message_content: Optional. Content of the message to be sent instead of the photo
     :type input_message_content: :class:`telebot.types.InputMessageContent`
 
+    :param show_caption_above_media: Optional. If true, a caption is shown over the photo or video
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InlineQueryResultPhoto`
     """
     def __init__(self, id, photo_url, thumbnail_url, photo_width=None, photo_height=None, title=None,
-                 description=None, caption=None, caption_entities=None, parse_mode=None, reply_markup=None, input_message_content=None):
+                 description=None, caption=None, caption_entities=None, parse_mode=None, reply_markup=None, input_message_content=None,
+                 show_caption_above_media=None):
         super().__init__('photo', id, title = title, caption = caption,
                          input_message_content = input_message_content, reply_markup = reply_markup,
                          parse_mode = parse_mode, caption_entities = caption_entities)
@@ -4445,6 +4477,7 @@ class InlineQueryResultPhoto(InlineQueryResultBase):
         self.photo_width = photo_width
         self.photo_height = photo_height
         self.description = description
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
     @property
     def thumb_url(self):
@@ -4461,10 +4494,12 @@ class InlineQueryResultPhoto(InlineQueryResultBase):
             json_dict['photo_height'] = self.photo_height
         if self.description:
             json_dict['description'] = self.description
+        if self.show_caption_above_media is not None:
+            json_dict['show_caption_above_media'] = self.show_caption_above_media
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultGif(InlineQueryResultBase):
     """
     Represents a link to an animated GIF file. By default, this animated GIF file will be sent by the user with optional caption. Alternatively, you can use input_message_content to send a message with the specified content instead of the animation.
@@ -4515,13 +4550,16 @@ class InlineQueryResultGif(InlineQueryResultBase):
     :param input_message_content: Optional. Content of the message to be sent instead of the GIF animation
     :type input_message_content: :class:`telebot.types.InputMessageContent`
 
+    :param show_caption_above_media: Optional. If true, a caption is shown over the photo or video
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InlineQueryResultGif`
     """
     def __init__(self, id, gif_url, thumbnail_url, gif_width=None, gif_height=None,
                  title=None, caption=None, caption_entities=None,
                  reply_markup=None, input_message_content=None, gif_duration=None, parse_mode=None,
-                 thumbnail_mime_type=None):
+                 thumbnail_mime_type=None, show_caption_above_media=None):
         super().__init__('gif', id, title = title, caption = caption,
                          input_message_content = input_message_content, reply_markup = reply_markup,
                          parse_mode = parse_mode, caption_entities = caption_entities)
@@ -4531,6 +4569,7 @@ class InlineQueryResultGif(InlineQueryResultBase):
         self.thumbnail_url = thumbnail_url
         self.gif_duration = gif_duration
         self.thumbnail_mime_type = thumbnail_mime_type
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
     @property
     def thumb_url(self):
@@ -4554,10 +4593,12 @@ class InlineQueryResultGif(InlineQueryResultBase):
             json_dict['gif_duration'] = self.gif_duration
         if self.thumbnail_mime_type:
             json_dict['thumbnail_mime_type'] = self.thumbnail_mime_type
+        if self.show_caption_above_media is not None:
+            json_dict['show_caption_above_media'] = self.show_caption_above_media
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultMpeg4Gif(InlineQueryResultBase):
     """
     Represents a link to a video animation (H.264/MPEG-4 AVC video without sound). By default, this animated MPEG-4 file will be sent by the user with optional caption. Alternatively, you can use input_message_content to send a message with the specified content instead of the animation.
@@ -4608,13 +4649,16 @@ class InlineQueryResultMpeg4Gif(InlineQueryResultBase):
     :param input_message_content: Optional. Content of the message to be sent instead of the video animation
     :type input_message_content: :class:`telebot.types.InputMessageContent`
 
+    :param show_caption_above_media: Optional. If true, a caption is shown over the photo or video
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InlineQueryResultMpeg4Gif`
     """
     def __init__(self, id, mpeg4_url, thumbnail_url, mpeg4_width=None, mpeg4_height=None,
                  title=None, caption=None, caption_entities=None,
                  parse_mode=None, reply_markup=None, input_message_content=None, mpeg4_duration=None,
-                 thumbnail_mime_type=None):
+                 thumbnail_mime_type=None, show_caption_above_media=None):
         super().__init__('mpeg4_gif', id, title = title, caption = caption,
                          input_message_content = input_message_content, reply_markup = reply_markup,
                          parse_mode = parse_mode, caption_entities = caption_entities)
@@ -4624,6 +4668,7 @@ class InlineQueryResultMpeg4Gif(InlineQueryResultBase):
         self.thumbnail_url = thumbnail_url
         self.mpeg4_duration = mpeg4_duration
         self.thumbnail_mime_type = thumbnail_mime_type
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
     @property
     def thumb_url(self):
@@ -4647,10 +4692,12 @@ class InlineQueryResultMpeg4Gif(InlineQueryResultBase):
             json_dict['mpeg4_duration '] = self.mpeg4_duration
         if self.thumbnail_mime_type:
             json_dict['thumbnail_mime_type'] = self.thumbnail_mime_type
+        if self.show_caption_above_media is not None:
+            json_dict['show_caption_above_media'] = self.show_caption_above_media
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultVideo(InlineQueryResultBase):
     """
     Represents a link to a page containing an embedded video player or a video file. By default, this video file will be sent by the user with an optional caption. Alternatively, you can use input_message_content to send a message with the specified content instead of the video.
@@ -4705,13 +4752,16 @@ class InlineQueryResultVideo(InlineQueryResultBase):
         required if InlineQueryResultVideo is used to send an HTML-page as a result (e.g., a YouTube video).
     :type input_message_content: :class:`telebot.types.InputMessageContent`
 
+    :param show_caption_above_media: Optional. If true, a caption is shown over the video
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InlineQueryResultVideo`
     """
     def __init__(self, id, video_url, mime_type, thumbnail_url,
                  title, caption=None, caption_entities=None, parse_mode=None,
                  video_width=None, video_height=None, video_duration=None,
-                 description=None, reply_markup=None, input_message_content=None):
+                 description=None, reply_markup=None, input_message_content=None, show_caption_above_media=None):
         super().__init__('video', id, title = title, caption = caption,
                          input_message_content = input_message_content, reply_markup = reply_markup,
                          parse_mode = parse_mode, caption_entities = caption_entities)
@@ -4722,6 +4772,7 @@ class InlineQueryResultVideo(InlineQueryResultBase):
         self.video_height = video_height
         self.video_duration = video_duration
         self.description = description
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
     @property
     def thumb_url(self):
@@ -4739,10 +4790,12 @@ class InlineQueryResultVideo(InlineQueryResultBase):
             json_dict['video_duration'] = self.video_duration
         if self.description:
             json_dict['description'] = self.description
+        if self.show_caption_above_media is not None:
+            json_dict['show_caption_above_media'] = self.show_caption_above_media
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultAudio(InlineQueryResultBase):
     """
     Represents a link to an MP3 audio file. By default, this audio file will be sent by the user. Alternatively, you can use input_message_content to send a message with the specified content instead of the audio.
@@ -4807,7 +4860,7 @@ class InlineQueryResultAudio(InlineQueryResultBase):
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultVoice(InlineQueryResultBase):
     """
     Represents a link to a voice recording in an .OGG container encoded with OPUS. By default, this voice recording will be sent by the user. Alternatively, you can use input_message_content to send a message with the specified content instead of the the voice message.
@@ -4865,7 +4918,7 @@ class InlineQueryResultVoice(InlineQueryResultBase):
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultDocument(InlineQueryResultBase):
     """
     Represents a link to a file. By default, this file will be sent by the user with an optional caption. Alternatively, you can use input_message_content to send a message with the specified content instead of the file. Currently, only .PDF and .ZIP files can be sent using this method.
@@ -4962,7 +5015,7 @@ class InlineQueryResultDocument(InlineQueryResultBase):
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultLocation(InlineQueryResultBase):
     """
     Represents a location on a map. By default, the location will be sent by the user. Alternatively, you can use input_message_content to send a message with the specified content instead of the location.
@@ -4987,16 +5040,13 @@ class InlineQueryResultLocation(InlineQueryResultBase):
     :param horizontal_accuracy: Optional. The radius of uncertainty for the location, measured in meters; 0-1500
     :type horizontal_accuracy: :obj:`float` number
 
-    :param live_period: Optional. Period in seconds for which the location can be updated, should be between 60 and 
-        86400.
+    :param live_period: Optional. Period in seconds during which the location can be updated, should be between 60 and 86400, or 0x7FFFFFFF for live locations that can be edited indefinitely.
     :type live_period: :obj:`int`
 
-    :param heading: Optional. For live locations, a direction in which the user is moving, in degrees. Must be between 1 
-        and 360 if specified.
+    :param heading: Optional. For live locations, a direction in which the user is moving, in degrees. Must be between 1 and 360 if specified.
     :type heading: :obj:`int`
 
-    :param proximity_alert_radius: Optional. For live locations, a maximum distance for proximity alerts about 
-        approaching another chat member, in meters. Must be between 1 and 100000 if specified.
+    :param proximity_alert_radius: Optional. For live locations, a maximum distance for proximity alerts about approaching another chat member, in meters. Must be between 1 and 100000 if specified.
     :type proximity_alert_radius: :obj:`int`
 
     :param reply_markup: Optional. Inline keyboard attached to the message
@@ -5067,7 +5117,7 @@ class InlineQueryResultLocation(InlineQueryResultBase):
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultVenue(InlineQueryResultBase):
     """
     Represents a venue. By default, the venue will be sent by the user. Alternatively, you can use input_message_content to send a message with the specified content instead of the venue.
@@ -5176,7 +5226,7 @@ class InlineQueryResultVenue(InlineQueryResultBase):
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultContact(InlineQueryResultBase):
     """
     Represents a contact with a phone number. By default, this contact will be sent by the user. Alternatively, you can use input_message_content to send a message with the specified content instead of the contact.
@@ -5264,7 +5314,7 @@ class InlineQueryResultContact(InlineQueryResultBase):
         return json_dict
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultGame(InlineQueryResultBase):
     """
     Represents a Game.
@@ -5311,6 +5361,7 @@ class InlineQueryResultCachedBase(ABC, JsonSerializable):
         self.parse_mode = None
         self.caption_entities = None
         self.payload_dic = {}
+        self.show_caption_above_media = None
 
     def to_json(self):
         json_dict = self.payload_dic
@@ -5330,10 +5381,12 @@ class InlineQueryResultCachedBase(ABC, JsonSerializable):
             json_dict['parse_mode'] = self.parse_mode
         if self.caption_entities:
             json_dict['caption_entities'] = MessageEntity.to_list_of_dicts(self.caption_entities)
+        if self.show_caption_above_media is not None:
+            json_dict['show_caption_above_media'] = self.show_caption_above_media
         return json.dumps(json_dict)
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultCachedPhoto(InlineQueryResultCachedBase):
     """
     Represents a link to a photo stored on the Telegram servers. By default, this photo will be sent by the user with an optional caption. Alternatively, you can use input_message_content to send a message with the specified content instead of the photo.
@@ -5372,12 +5425,15 @@ class InlineQueryResultCachedPhoto(InlineQueryResultCachedBase):
     :param input_message_content: Optional. Content of the message to be sent instead of the photo
     :type input_message_content: :class:`telebot.types.InputMessageContent`
 
+    :param show_caption_above_media: Optional. Pass True, if a caption is not required for the media
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InlineQueryResultCachedPhoto`
     """
     def __init__(self, id, photo_file_id, title=None, description=None,
                  caption=None, caption_entities = None, parse_mode=None,
-                 reply_markup=None, input_message_content=None):
+                 reply_markup=None, input_message_content=None, show_caption_above_media=None):
         InlineQueryResultCachedBase.__init__(self)
         self.type = 'photo'
         self.id = id
@@ -5390,9 +5446,10 @@ class InlineQueryResultCachedPhoto(InlineQueryResultCachedBase):
         self.input_message_content = input_message_content
         self.parse_mode = parse_mode
         self.payload_dic['photo_file_id'] = photo_file_id
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultCachedGif(InlineQueryResultCachedBase):
     """
     Represents a link to an animated GIF file stored on the Telegram servers. By default, this animated GIF file will be sent by the user with an optional caption. Alternatively, you can use input_message_content to send a message with specified content instead of the animation.
@@ -5427,12 +5484,15 @@ class InlineQueryResultCachedGif(InlineQueryResultCachedBase):
     :param input_message_content: Optional. Content of the message to be sent instead of the GIF animation
     :type input_message_content: :class:`telebot.types.InputMessageContent`
 
+    :param show_caption_above_media: Optional. Pass True, if a caption is not required for the media
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InlineQueryResultCachedGif`
     """
     def __init__(self, id, gif_file_id, title=None, description=None,
                  caption=None, caption_entities = None, parse_mode=None,
-                 reply_markup=None, input_message_content=None):
+                 reply_markup=None, input_message_content=None, show_caption_above_media=None):
         InlineQueryResultCachedBase.__init__(self)
         self.type = 'gif'
         self.id = id
@@ -5445,9 +5505,10 @@ class InlineQueryResultCachedGif(InlineQueryResultCachedBase):
         self.input_message_content = input_message_content
         self.parse_mode = parse_mode
         self.payload_dic['gif_file_id'] = gif_file_id
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultCachedMpeg4Gif(InlineQueryResultCachedBase):
     """
     Represents a link to a video animation (H.264/MPEG-4 AVC video without sound) stored on the Telegram servers. By default, this animated MPEG-4 file will be sent by the user with an optional caption. Alternatively, you can use input_message_content to send a message with the specified content instead of the animation.
@@ -5482,12 +5543,15 @@ class InlineQueryResultCachedMpeg4Gif(InlineQueryResultCachedBase):
     :param input_message_content: Optional. Content of the message to be sent instead of the video animation
     :type input_message_content: :class:`telebot.types.InputMessageContent`
 
+    :param show_caption_above_media: Optional. Pass True, if caption should be shown above the media
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InlineQueryResultCachedMpeg4Gif`
     """
     def __init__(self, id, mpeg4_file_id, title=None, description=None,
                  caption=None, caption_entities = None, parse_mode=None,
-                 reply_markup=None, input_message_content=None):
+                 reply_markup=None, input_message_content=None, show_caption_above_media=None):
         InlineQueryResultCachedBase.__init__(self)
         self.type = 'mpeg4_gif'
         self.id = id
@@ -5500,9 +5564,9 @@ class InlineQueryResultCachedMpeg4Gif(InlineQueryResultCachedBase):
         self.input_message_content = input_message_content
         self.parse_mode = parse_mode
         self.payload_dic['mpeg4_file_id'] = mpeg4_file_id
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
-
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultCachedSticker(InlineQueryResultCachedBase):
     """
     Represents a link to a sticker stored on the Telegram servers. By default, this sticker will be sent by the user. Alternatively, you can use input_message_content to send a message with the specified content instead of the sticker.
@@ -5537,7 +5601,7 @@ class InlineQueryResultCachedSticker(InlineQueryResultCachedBase):
         self.payload_dic['sticker_file_id'] = sticker_file_id
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultCachedDocument(InlineQueryResultCachedBase):
     """
     Represents a link to a file stored on the Telegram servers. By default, this file will be sent by the user with an optional caption. Alternatively, you can use input_message_content to send a message with the specified content instead of the file.
@@ -5596,7 +5660,7 @@ class InlineQueryResultCachedDocument(InlineQueryResultCachedBase):
         self.payload_dic['document_file_id'] = document_file_id
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultCachedVideo(InlineQueryResultCachedBase):
     """
     Represents a link to a video file stored on the Telegram servers. By default, this video file will be sent by the user with an optional caption. Alternatively, you can use input_message_content to send a message with the specified content instead of the video.
@@ -5635,13 +5699,16 @@ class InlineQueryResultCachedVideo(InlineQueryResultCachedBase):
     :param input_message_content: Optional. Content of the message to be sent instead of the video
     :type input_message_content: :class:`telebot.types.InputMessageContent`
 
+    :param show_caption_above_media: Optional. Pass True, if a caption is not required for the media
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InlineQueryResultCachedVideo`
     """
     def __init__(self, id, video_file_id, title, description=None,
                  caption=None, caption_entities = None, parse_mode=None,
                  reply_markup=None,
-                 input_message_content=None):
+                 input_message_content=None, show_caption_above_media=None):
         InlineQueryResultCachedBase.__init__(self)
         self.type = 'video'
         self.id = id
@@ -5654,9 +5721,10 @@ class InlineQueryResultCachedVideo(InlineQueryResultCachedBase):
         self.input_message_content = input_message_content
         self.parse_mode = parse_mode
         self.payload_dic['video_file_id'] = video_file_id
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultCachedVoice(InlineQueryResultCachedBase):
     """
     Represents a link to a voice message stored on the Telegram servers. By default, this voice message will be sent by the user. Alternatively, you can use input_message_content to send a message with the specified content instead of the voice message.
@@ -5710,7 +5778,7 @@ class InlineQueryResultCachedVoice(InlineQueryResultCachedBase):
         self.payload_dic['voice_file_id'] = voice_file_id
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class InlineQueryResultCachedAudio(InlineQueryResultCachedBase):
     """
     Represents a link to an MP3 audio file stored on the Telegram servers. By default, this audio file will be sent by the user. Alternatively, you can use input_message_content to send a message with the specified content instead of the audio.
@@ -6078,7 +6146,7 @@ class OrderInfo(JsonDeserializable):
         self.shipping_address: ShippingAddress = shipping_address
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class ShippingOption(JsonSerializable):
     """
     This object represents one shipping option.
@@ -6173,6 +6241,7 @@ class SuccessfulPayment(JsonDeserializable):
         self.provider_payment_charge_id: str = provider_payment_charge_id
 
 
+# noinspection PyShadowingBuiltins
 class ShippingQuery(JsonDeserializable):
     """
     This object contains information about an incoming shipping query.
@@ -6209,6 +6278,7 @@ class ShippingQuery(JsonDeserializable):
         self.shipping_address: ShippingAddress = shipping_address
 
 
+# noinspection PyShadowingBuiltins
 class PreCheckoutQuery(JsonDeserializable):
     """
     This object contains information about an incoming pre-checkout query.
@@ -6276,15 +6346,6 @@ class StickerSet(JsonDeserializable):
     :param sticker_type: Type of stickers in the set, currently one of “regular”, “mask”, “custom_emoji”
     :type sticker_type: :obj:`str`
 
-    :param is_animated: True, if the sticker set contains animated stickers
-    :type is_animated: :obj:`bool`
-
-    :param is_video: True, if the sticker set contains video stickers
-    :type is_video: :obj:`bool`
-
-    :param contains_masks: deprecated
-    :type contains_masks: :obj:`bool`
-
     :param stickers: List of all set stickers
     :type stickers: :obj:`list` of :class:`telebot.types.Sticker`
 
@@ -6308,12 +6369,10 @@ class StickerSet(JsonDeserializable):
             obj['thumbnail'] = None
         return cls(**obj)
 
-    def __init__(self, name, title, sticker_type, is_animated, is_video, stickers, thumbnail=None, **kwargs):
+    def __init__(self, name, title, sticker_type, stickers, thumbnail=None, **kwargs):
         self.name: str = name
         self.title: str = title
         self.sticker_type: str = sticker_type
-        self.is_animated: bool = is_animated
-        self.is_video: bool = is_video
         self.stickers: List[Sticker] = stickers
         self.thumbnail: PhotoSize = thumbnail
 
@@ -6330,7 +6389,24 @@ class StickerSet(JsonDeserializable):
         logger.warning('The parameter "contains_masks" is deprecated, use "sticker_type instead"')
         return self.sticker_type == 'mask'
 
+    @property
+    def is_animated(self):
+        """
+        Deprecated since Bot API 7.2. Stickers can be mixed now.
+        """
+        logger.warning('The parameter "is_animated" is deprecated since Bot API 7.2. Stickers can now be mixed')
+        return False
 
+    @property
+    def is_video(self):
+        """
+        Deprecated since Bot API 7.2. Stickers can be mixed now.
+        """
+        logger.warning('The parameter "is_video" is deprecated since Bot API 7.2. Stickers can now be mixed')
+        return False
+
+
+# noinspection PyShadowingBuiltins
 class Sticker(JsonDeserializable):
     """
     This object represents a sticker.
@@ -6475,6 +6551,7 @@ class MaskPosition(Dictionaryable, JsonDeserializable, JsonSerializable):
 
 # InputMedia
 
+# noinspection PyShadowingBuiltins
 class InputMedia(Dictionaryable, JsonSerializable):
     """
     This object represents the content of a media message to be sent. It should be one of
@@ -6547,10 +6624,13 @@ class InputMediaPhoto(InputMedia):
     :param has_spoiler: Optional. True, if the uploaded photo is a spoiler
     :type has_spoiler: :obj:`bool`
 
+    :param show_caption_above_media: Optional. True, if the caption should be shown above the photo
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InputMediaPhoto`
     """
-    def __init__(self, media, caption=None, parse_mode=None, caption_entities=None, has_spoiler=None):
+    def __init__(self, media, caption=None, parse_mode=None, caption_entities=None, has_spoiler=None, show_caption_above_media=None):
         if service_utils.is_pil_image(media):
             media = service_utils.pil_image_to_file(media)
     
@@ -6558,11 +6638,14 @@ class InputMediaPhoto(InputMedia):
             type="photo", media=media, caption=caption, parse_mode=parse_mode, caption_entities=caption_entities)
 
         self.has_spoiler: Optional[bool] = has_spoiler
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
     def to_dict(self):
         ret = super(InputMediaPhoto, self).to_dict()
         if self.has_spoiler is not None:
             ret['has_spoiler'] = self.has_spoiler
+        if self.show_caption_above_media is not None:
+            ret['show_caption_above_media'] = self.show_caption_above_media
         return ret
 
 
@@ -6610,11 +6693,14 @@ class InputMediaVideo(InputMedia):
     :param has_spoiler: Optional. True, if the uploaded video is a spoiler
     :type has_spoiler: :obj:`bool`
 
+    :param show_caption_above_media: Optional. True, if the caption should be shown above the video
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InputMediaVideo`
     """
     def __init__(self, media, thumbnail=None, caption=None, parse_mode=None, caption_entities=None,
-                 width=None, height=None, duration=None, supports_streaming=None, has_spoiler=None):
+                 width=None, height=None, duration=None, supports_streaming=None, has_spoiler=None, show_caption_above_media=None):
         super(InputMediaVideo, self).__init__(
             type="video", media=media, caption=caption, parse_mode=parse_mode, caption_entities=caption_entities)
         self.thumbnail = thumbnail
@@ -6623,6 +6709,7 @@ class InputMediaVideo(InputMedia):
         self.duration = duration
         self.supports_streaming = supports_streaming
         self.has_spoiler: Optional[bool] = has_spoiler
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
     @property
     def thumb(self):
@@ -6643,6 +6730,8 @@ class InputMediaVideo(InputMedia):
             ret['supports_streaming'] = self.supports_streaming
         if self.has_spoiler is not None:
             ret['has_spoiler'] = self.has_spoiler
+        if self.show_caption_above_media is not None:
+            ret['show_caption_above_media'] = self.show_caption_above_media
         return ret
 
 
@@ -6687,11 +6776,14 @@ class InputMediaAnimation(InputMedia):
     :param has_spoiler: Optional. True, if the uploaded animation is a spoiler
     :type has_spoiler: :obj:`bool`
 
+    :param show_caption_above_media: Optional. True, if the caption should be shown above the animation
+    :type show_caption_above_media: :obj:`bool`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InputMediaAnimation`
     """
     def __init__(self, media, thumbnail=None, caption=None, parse_mode=None, caption_entities=None,
-                 width=None, height=None, duration=None, has_spoiler=None):
+                 width=None, height=None, duration=None, has_spoiler=None, show_caption_above_media=None):
         super(InputMediaAnimation, self).__init__(
             type="animation", media=media, caption=caption, parse_mode=parse_mode, caption_entities=caption_entities)
         self.thumbnail = thumbnail
@@ -6699,6 +6791,7 @@ class InputMediaAnimation(InputMedia):
         self.height = height
         self.duration = duration
         self.has_spoiler: Optional[bool] = has_spoiler
+        self.show_caption_above_media: Optional[bool] = show_caption_above_media
 
     @property
     def thumb(self):
@@ -6717,6 +6810,8 @@ class InputMediaAnimation(InputMedia):
             ret['duration'] = self.duration
         if self.has_spoiler is not None:
             ret['has_spoiler'] = self.has_spoiler
+        if self.show_caption_above_media is not None:
+            ret['show_caption_above_media'] = self.show_caption_above_media
         return ret
 
 
@@ -6857,6 +6952,9 @@ class PollOption(JsonDeserializable):
     :param voter_count: Number of users that voted for this option
     :type voter_count: :obj:`int`
 
+    :param text_entities: Optional. Special entities that appear in the option text. Currently, only custom emoji entities are allowed in poll option texts
+    :type text_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.PollOption`
     """
@@ -6864,15 +6962,55 @@ class PollOption(JsonDeserializable):
     def de_json(cls, json_string):
         if json_string is None: return None
         obj = cls.check_json(json_string, dict_copy=False)
+        if 'text_entities' in obj:
+            obj['text_entities'] = Message.parse_entities(obj['text_entities'])
         return cls(**obj)
 
-    def __init__(self, text, voter_count = 0, **kwargs):
+    def __init__(self, text, voter_count = 0, text_entities=None, **kwargs):
         self.text: str = text
         self.voter_count: int = voter_count
+        self.text_entities: List[MessageEntity] = text_entities
     # Converted in _convert_poll_options
     # def to_json(self):
     #     # send_poll Option is a simple string: https://core.telegram.org/bots/api#sendpoll
     #     return json.dumps(self.text)
+
+
+class InputPollOption(JsonSerializable):
+    """
+    This object contains information about one answer option in a poll to send.
+
+    Telegram Documentation: https://core.telegram.org/bots/api#inputpolloption
+
+    :param text: Option text, 1-100 characters
+    :type text: :obj:`str`
+
+    :param text_parse_mode: Optional. Mode for parsing entities in the text. See formatting options for more details. Currently, only custom emoji entities are allowed
+    :type text_parse_mode: :obj:`str`
+
+    :param text_entities: Optional. A JSON-serialized list of special entities that appear in the poll option text. It can be specified instead of text_parse_mode
+    :type text_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
+
+    :return: Instance of the class
+    :rtype: :class:`telebot.types.PollOption`
+    """
+    def __init__(self, text, text_parse_mode=None, text_entities=None, **kwargs):
+        self.text: str = text
+        self.text_parse_mode: Optional[str] = text_parse_mode
+        self.text_entities: List[MessageEntity] = text_entities
+
+    def to_json(self):
+        return json.dumps(self.to_dict())
+
+    def to_dict(self):
+        json_dict = {
+            "text": self.text,
+        }
+        if self.text_parse_mode:
+            json_dict["text_parse_mode"] = self.text_parse_mode
+        if self.text_entities:
+            json_dict['text_entities'] = [entity.to_dict() for entity in self.text_entities]
+        return json_dict
 
 
 class Poll(JsonDeserializable):
@@ -6905,16 +7043,13 @@ class Poll(JsonDeserializable):
     :param allows_multiple_answers: True, if the poll allows multiple answers
     :type allows_multiple_answers: :obj:`bool`
 
-    :param correct_option_id: Optional. 0-based identifier of the correct answer option. Available only for polls in 
-        the quiz mode, which are closed, or was sent (not forwarded) by the bot or to the private chat with the bot.
+    :param correct_option_id: Optional. 0-based identifier of the correct answer option. Available only for polls in the quiz mode, which are closed, or was sent (not forwarded) by the bot or to the private chat with the bot.
     :type correct_option_id: :obj:`int`
 
-    :param explanation: Optional. Text that is shown when a user chooses an incorrect answer or taps on the lamp icon in a 
-        quiz-style poll, 0-200 characters
+    :param explanation: Optional. Text that is shown when a user chooses an incorrect answer or taps on the lamp icon in a quiz-style poll, 0-200 characters
     :type explanation: :obj:`str`
 
-    :param explanation_entities: Optional. Special entities like usernames, URLs, bot commands, etc. that appear in 
-        the explanation
+    :param explanation_entities: Optional. Special entities like usernames, URLs, bot commands, etc. that appear in the explanation
     :type explanation_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
 
     :param open_period: Optional. Amount of time in seconds the poll will be active after creation
@@ -6922,6 +7057,9 @@ class Poll(JsonDeserializable):
 
     :param close_date: Optional. Point in time (Unix timestamp) when the poll will be automatically closed
     :type close_date: :obj:`int`
+
+    :param question_entities: Optional. Special entities that appear in the question. Currently, only custom emoji entities are allowed in poll questions
+    :type question_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
 
     :return: Instance of the class
     :rtype: :class:`telebot.types.Poll`
@@ -6937,6 +7075,8 @@ class Poll(JsonDeserializable):
         obj['options'] = options or None
         if 'explanation_entities' in obj:
             obj['explanation_entities'] = Message.parse_entities(obj['explanation_entities'])
+        if 'question_entities' in obj:
+            obj['question_entities'] = Message.parse_entities(obj['question_entities'])
         return cls(**obj)
 
     # noinspection PyShadowingBuiltins
@@ -6945,7 +7085,8 @@ class Poll(JsonDeserializable):
             question, options,
             poll_id=None, total_voter_count=None, is_closed=None, is_anonymous=None, type=None,
             allows_multiple_answers=None, correct_option_id=None, explanation=None, explanation_entities=None,
-            open_period=None, close_date=None, poll_type=None, **kwargs):
+            open_period=None, close_date=None, poll_type=None, question_entities=None,
+            **kwargs):
         self.id: str = poll_id
         self.question: str = question
         self.options: List[PollOption] = options
@@ -6961,6 +7102,7 @@ class Poll(JsonDeserializable):
         self.correct_option_id: int = correct_option_id
         self.explanation: str = explanation
         self.explanation_entities: List[MessageEntity] = explanation_entities
+        self.question_entities: List[MessageEntity] = question_entities
         self.open_period: int = open_period
         self.close_date: int = close_date
 
@@ -7332,12 +7474,12 @@ class MenuButton(JsonDeserializable, JsonSerializable, Dictionaryable):
     def de_json(cls, json_string):
         if json_string is None: return None
         obj = cls.check_json(json_string)
-        map = {
+        types = {
             'commands': MenuButtonCommands,
             'web_app': MenuButtonWebApp,
             'default': MenuButtonDefault
         }
-        return map[obj['type']](**obj)
+        return types[obj['type']](**obj)
     
     def to_json(self):
         """
@@ -7350,8 +7492,9 @@ class MenuButton(JsonDeserializable, JsonSerializable, Dictionaryable):
         :meta private:
         """
         raise NotImplementedError
-        
 
+
+# noinspection PyUnusedLocal
 class MenuButtonCommands(MenuButton):
     """
     Represents a menu button, which opens the bot's list of commands.
@@ -7375,6 +7518,7 @@ class MenuButtonCommands(MenuButton):
         return json.dumps(self.to_dict())
 
 
+# noinspection PyUnusedLocal
 class MenuButtonWebApp(MenuButton):
     """
     Represents a menu button, which launches a Web App.
@@ -7406,7 +7550,8 @@ class MenuButtonWebApp(MenuButton):
     def to_json(self):
         return json.dumps(self.to_dict())
 
-    
+
+# noinspection PyUnusedLocal
 class MenuButtonDefault(MenuButton):
     """
     Describes that no specific value for the menu button was set.
@@ -7813,6 +7958,15 @@ class ChatShared(JsonDeserializable):
         and could be unable to use this identifier, unless the chat is already known to the bot by some other means.
     :type chat_id: :obj:`int`
 
+    :param title: Optional. Title of the shared chat
+    :type title: :obj:`str`
+
+    :param photo: Optional. Array of Photosize
+    :type photo: :obj:`list` of :class:`telebot.types.PhotoSize`
+
+    :param username: Optional. Username of the shared chat
+    :type username: :obj:`str`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.ChatShared`
     """
@@ -7823,9 +7977,13 @@ class ChatShared(JsonDeserializable):
         obj = cls.check_json(json_string)
         return cls(**obj)
 
-    def __init__(self, request_id: int, chat_id: int, **kwargs) -> None:
+    def __init__(self, request_id: int, chat_id: int, title: Optional[str]=None, photo: Optional[List[PhotoSize]]=None,
+                    username: Optional[str]=None, **kwargs) -> None:
         self.request_id: int = request_id
         self.chat_id: int = chat_id
+        self.title: Optional[str] = title
+        self.photo: Optional[List[PhotoSize]] = photo
+        self.username: Optional[str] = username
 
 
 class BotDescription(JsonDeserializable):
@@ -7874,6 +8032,7 @@ class BotShortDescription(JsonDeserializable):
         self.short_description: str = short_description
 
 
+# noinspection PyShadowingBuiltins
 class InputSticker(Dictionaryable, JsonSerializable):
     """
     This object describes a sticker to be added to a sticker set.
@@ -7893,15 +8052,24 @@ class InputSticker(Dictionaryable, JsonSerializable):
         For “regular” and “custom_emoji” stickers only.
     :type keywords: :obj:`list` of :obj:`str`
 
+    :param format: 	Format of the added sticker, must be one of “static” for a .WEBP or .PNG image, “animated” for a .TGS animation, “video” for a WEBM video
+    :type format: :obj:`str`
+
     :return: Instance of the class
     :rtype: :class:`telebot.types.InputSticker`
     """
 
-    def __init__(self, sticker: Union[str, InputFile], emoji_list: List[str], mask_position: Optional[MaskPosition]=None, keywords: Optional[List[str]]=None) -> None:
+    def __init__(self, sticker: Union[str, InputFile], emoji_list: List[str],  format: Optional[str]=None,
+                 mask_position: Optional[MaskPosition]=None, keywords: Optional[List[str]]=None) -> None:
         self.sticker: Union[str, InputFile] = sticker
         self.emoji_list: List[str] = emoji_list
         self.mask_position: Optional[MaskPosition] = mask_position
         self.keywords: Optional[List[str]] = keywords
+        self.format: str = format
+
+        if not self.format:
+            logger.warning("Deprecation warning. 'format' parameter is required in InputSticker. Setting format to 'static'.")
+            self.format = "static"
 
         if service_utils.is_string(self.sticker):
             self._sticker_name = ''
@@ -7916,7 +8084,8 @@ class InputSticker(Dictionaryable, JsonSerializable):
     def to_dict(self) -> dict:
         json_dict = {
             'sticker': self._sticker_dic,
-            'emoji_list': self.emoji_list
+            'emoji_list': self.emoji_list,
+            'format': self.format
         }
 
         if self.mask_position is not None:
@@ -8098,6 +8267,7 @@ class Story(JsonDeserializable):
 
 
 # base class
+# noinspection PyShadowingBuiltins
 class ReactionType(JsonDeserializable, Dictionaryable, JsonSerializable):
     """
     This object represents a reaction type.
@@ -8282,8 +8452,9 @@ class MessageReactionCountUpdated(JsonDeserializable):
         self.message_id: int = message_id
         self.date: int = date
         self.reactions: List[ReactionCount] = reactions
-        
 
+
+# noinspection PyShadowingBuiltins
 class ReactionCount(JsonDeserializable):
     """
     This object represents a reaction added to a message along with the number of times it was added.
@@ -8474,7 +8645,7 @@ class ExternalReplyInfo(JsonDeserializable):
         self.venue: Optional[Venue] = venue
 
 
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferences,PyShadowingBuiltins
 class MessageOrigin(JsonDeserializable):
     """
     This object describes the origin of a message.
@@ -8859,6 +9030,13 @@ class TextQuote(JsonDeserializable):
         self.position: Optional[int] = position
         self.is_manual: Optional[bool] = is_manual
 
+    @property
+    def html_text(self):
+        """
+        Returns html-rendered text.
+        """
+        return apply_html_entities(self.text, self.entities, getattr(self, "custom_subs", None))
+
 
 class ReplyParameters(JsonDeserializable, Dictionaryable, JsonSerializable):
     """
@@ -8943,13 +9121,8 @@ class UsersShared(JsonDeserializable):
     :param request_id: Identifier of the request
     :type request_id: :obj:`int`
 
-    :param user_ids: Identifiers of the shared users. These numbers may have more than 32 significant bits
-                     and some programming languages may have difficulty/silent defects in interpreting them.
-                     But they have at most 52 significant bits, so 64-bit integers or double-precision float
-                     types are safe for storing these identifiers. The bot may not have access to the users and
-                     could be unable to use these identifiers unless the users are already known to the bot by
-                     some other means.
-    :type user_ids: :obj:`list` of :obj:`int`
+    :param users: Information about users shared with the bot
+    :type users: :obj:`list` of :obj:`types.SharedUser`
 
     :return: Instance of the class
     :rtype: :class:`UsersShared`
@@ -8958,17 +9131,23 @@ class UsersShared(JsonDeserializable):
     def de_json(cls, json_string):
         if json_string is None: return None
         obj = cls.check_json(json_string)
+        obj['users'] = [SharedUser.de_json(user) for user in obj['users']]
         return cls(**obj)
 
-    def __init__(self, request_id, user_ids, **kwargs):
+    def __init__(self, request_id, users: List[SharedUser], **kwargs):
         self.request_id = request_id
-        self.user_ids = user_ids
+        self.users = users
 
     @property
     def user_id(self):
         logger.warning('The parameter "user_id" is deprecated, use "user_ids" instead')
         return None
-    
+
+    @property
+    def user_ids(self):
+        logger.warning('The parameter "user_ids" is deprecated, use "users" instead')
+        return self.users
+
 
 class ChatBoostUpdated(JsonDeserializable):
     """
@@ -9277,7 +9456,7 @@ class InaccessibleMessage(JsonDeserializable):
             'group_chat_created', 'supergroup_chat_created', 'channel_chat_created', 'message_auto_delete_timer_changed',
             'migrate_to_chat_id', 'migrate_from_chat_id', 'pinned_message', 'invoice', 'successful_payment',
             'users_shared', 'chat_shared', 'connected_website', 'write_access_allowed', 'passport_data',
-            'proximity_alert_triggered', 'forum_topic_created', 'forum_topic_edited', 'forum_topic_closed',
+            'proximity_alert_triggered', 'chat_background_set', 'forum_topic_created', 'forum_topic_edited', 'forum_topic_closed',
             'forum_topic_reopened', 'general_forum_topic_hidden', 'general_forum_topic_unhidden', 'giveaway_created',
             'giveaway', 'giveaway_winners', 'giveaway_completed', 'video_chat_scheduled', 'video_chat_started',
             'video_chat_ended', 'video_chat_participants_invited', 'web_app_data', 'reply_markup'
@@ -9308,3 +9487,877 @@ class ChatBoostAdded(JsonDeserializable):
     
     def __init__(self, boost_count, **kwargs):
         self.boost_count: int = boost_count
+
+
+# noinspection PyShadowingBuiltins
+class BusinessConnection(JsonDeserializable):
+    """
+    This object describes the connection of the bot with a business account.
+
+    Telegram documentation: https://core.telegram.org/bots/api#businessconnection
+
+    :param id: Unique identifier of the business connection
+    :type id: :obj:`str`
+
+    :param user: Business account user that created the business connection
+    :type user: :class:`User`
+
+    :param user_chat_id: Identifier of a private chat with the user who created the business connection
+    :type user_chat_id: :obj:`int`
+
+    :param date: Date the connection was established in Unix time
+    :type date: :obj:`int`
+
+    :param can_reply: True, if the bot can act on behalf of the business account in chats that were active in the last 24 hours
+    :type can_reply: :obj:`bool`
+
+    :param is_enabled: True, if the connection is active
+    :type is_enabled: :obj:`bool`
+
+    :return: Instance of the class
+    :rtype: :class:`BusinessConnection`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        obj['user'] = User.de_json(obj['user'])
+        return cls(**obj)
+    
+    def __init__(self, id, user, user_chat_id, date, can_reply, is_enabled, **kwargs):
+        self.id: str = id
+        self.user: User = user
+        self.user_chat_id: int = user_chat_id
+        self.date: int = date
+        self.can_reply: bool = can_reply
+        self.is_enabled: bool = is_enabled
+
+
+
+class BusinessMessagesDeleted(JsonDeserializable):
+    """
+    This object is received when messages are deleted from a connected business account.
+
+    Telegram documentation: https://core.telegram.org/bots/api#businessmessagesdeleted
+
+    :param business_connection_id: Unique identifier of the business connection
+    :type business_connection_id: :obj:`str`
+
+    :param chat: Information about a chat in the business account. The bot may not have access to the chat or the corresponding user.
+    :type chat: :class:`Chat`
+
+    :param message_ids: A JSON-serialized list of identifiers of deleted messages in the chat of the business account
+    :type message_ids: :obj:`list` of :obj:`int`
+
+    :return: Instance of the class
+    :rtype: :class:`BusinessMessagesDeleted`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        obj['chat'] = Chat.de_json(obj['chat'])
+        return cls(**obj)
+    
+
+    def __init__(self, business_connection_id, chat, message_ids, **kwargs):
+        self.business_connection_id: str = business_connection_id
+        self.chat: Chat = chat
+        self.message_ids: List[int] = message_ids
+        
+
+class BusinessIntro(JsonDeserializable):
+    """
+    This object represents a business intro.
+
+    Telegram documentation: https://core.telegram.org/bots/api#businessintro
+
+    :param title: Optional. Title text of the business intro
+    :type title: :obj:`str`
+
+    :param message: Optional. Message text of the business intro
+    :type message: :obj:`str`
+
+    :param sticker: Optional. Sticker of the business intro
+    :type sticker: :class:`Sticker`
+
+    :return: Instance of the class
+    :rtype: :class:`BusinessIntro`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        if 'sticker' in obj:
+            obj['sticker'] = Sticker.de_json(obj['sticker'])
+        return cls(**obj)
+    
+    def __init__(self, title=None, message=None, sticker=None, **kwargs):
+        self.title: Optional[str] = title
+        self.message: Optional[str] = message
+        self.sticker: Optional[Sticker] = sticker
+
+
+class BusinessLocation(JsonDeserializable):
+    """
+    This object represents a business location.
+
+    Telegram documentation: https://core.telegram.org/bots/api#businesslocation
+
+    :param address: Address of the business
+    :type address: :obj:`str`
+
+    :param location: Optional. Location of the business
+    :type location: :class:`Location`
+
+    :return: Instance of the class
+    :rtype: :class:`BusinessLocation`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        if 'location' in obj:
+            obj['location'] = Location.de_json(obj['location'])
+        return cls(**obj)
+    
+    def __init__(self, address, location=None, **kwargs):
+        self.address: str = address
+        self.location: Optional[Location] = location
+
+
+class BusinessOpeningHoursInterval(JsonDeserializable):
+    """
+    This object represents a business opening hours interval.
+
+    Telegram documentation: https://core.telegram.org/bots/api#businessopeninghoursinterval
+
+    :param opening_minute: The minute's sequence number in a week, starting on Monday, marking the start of the time interval during which the business is open; 0 - 7 24 60
+    :type opening_minute: :obj:`int`
+
+    :param closing_minute: The minute's sequence number in a week, starting on Monday, marking the end of the time interval during which the business is open; 0 - 8 24 60
+    :type closing_minute: :obj:`int`
+
+    :return: Instance of the class
+    :rtype: :class:`BusinessOpeningHoursInterval`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+    
+    def __init__(self, opening_minute, closing_minute, **kwargs):
+        self.opening_minute: int = opening_minute
+        self.closing_minute: int = closing_minute
+
+
+class BusinessOpeningHours(JsonDeserializable):
+    """
+
+    This object represents business opening hours.
+
+    Telegram documentation: https://core.telegram.org/bots/api#businessopeninghours
+
+    :param time_zone_name: Unique name of the time zone for which the opening hours are defined
+    :type time_zone_name: :obj:`str`
+
+    :param opening_hours: List of time intervals describing business opening hours
+    :type opening_hours: :obj:`list` of :class:`BusinessOpeningHoursInterval`
+
+    :return: Instance of the class
+
+    :rtype: :class:`BusinessOpeningHours`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        obj['opening_hours'] = [BusinessOpeningHoursInterval.de_json(interval) for interval in obj['opening_hours']]
+        return cls(**obj)
+    
+    def __init__(self, time_zone_name, opening_hours, **kwargs):
+        self.time_zone_name: str = time_zone_name
+        self.opening_hours: List[BusinessOpeningHoursInterval] = opening_hours
+
+
+class SharedUser(JsonDeserializable):
+    """
+    This object contains information about a user that was shared with the bot using a KeyboardButtonRequestUser button.
+
+    Telegram documentation: https://core.telegram.org/bots/api#shareduser
+
+    :param user_id: Identifier of the shared user. This number may have more than 32 significant bits and some programming languages may have difficulty/silent defects in interpreting it. But it has at most 52 significant bits, so 64-bit integers or double-precision float types are safe for storing these identifiers. The bot may not have access to the user and could be unable to use this identifier, unless the user is already known to the bot by some other means.
+    :type user_id: :obj:`int`
+
+    :param first_name: Optional. First name of the user, if the name was requested by the bot
+    :type first_name: :obj:`str`
+
+    :param last_name: Optional. Last name of the user, if the name was requested by the bot
+    :type last_name: :obj:`str`
+
+    :param username: Optional. Username of the user, if the username was requested by the bot
+    :type username: :obj:`str`
+
+    :param photo: Optional. Available sizes of the chat photo, if the photo was requested by the bot
+    :type photo: :obj:`list` of :class:`PhotoSize`
+
+    :return: Instance of the class
+    :rtype: :class:`SharedUser`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        if 'photo' in obj:
+            obj['photo'] = [PhotoSize.de_json(photo) for photo in obj['photo']]
+        return cls(**obj)
+    
+    def __init__(self, user_id, first_name=None, last_name=None, username=None, photo=None, **kwargs):
+        self.user_id: int = user_id
+        self.first_name: Optional[str] = first_name
+        self.last_name: Optional[str] = last_name
+        self.username: Optional[str] = username
+        self.photo: Optional[List[PhotoSize]] = photo
+
+
+class Birthdate(JsonDeserializable):
+    """
+    This object represents a user's birthdate.
+
+    Telegram documentation: https://core.telegram.org/bots/api#birthdate
+
+    :param day: Day of the user's birth; 1-31
+    :type day: :obj:`int`
+
+    :param month: Month of the user's birth; 1-12
+    :type month: :obj:`int`
+
+    :param year: Optional. Year of the user's birth
+    :type year: :obj:`int`
+
+    :return: Instance of the class
+    :rtype: :class:`Birthdate`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+    
+    def __init__(self, day, month, year=None, **kwargs):
+        self.day: int = day
+        self.month: int = month
+        self.year: Optional[int] = year
+
+
+class BackgroundFill(ABC, JsonDeserializable):
+    """
+    This object describes the way a background is filled based on the selected colors. Currently, it can be one of
+        BackgroundFillSolid
+        BackgroundFillGradient
+        BackgroundFillFreeformGradient
+
+    Telegram documentation: https://core.telegram.org/bots/api#backgroundfill
+
+    :return: Instance of the class
+    :rtype: :class:`BackgroundFillSolid` or :class:`BackgroundFillGradient` or :class:`BackgroundFillFreeformGradient`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        if obj["type"] == "solid":
+            return BackgroundFillSolid.de_json(obj)
+        elif obj["type"] == "gradient":
+            return BackgroundFillGradient.de_json(obj)
+        elif obj["type"] == "freeform_gradient":
+            return BackgroundFillFreeformGradient.de_json(obj)
+        return None
+
+
+# noinspection PyShadowingBuiltins
+class BackgroundFillSolid(BackgroundFill):
+    """
+    The background is filled using the selected color.
+
+    Telegram documentation: https://core.telegram.org/bots/api#backgroundfillsolid
+
+    :param type: Type of the background fill, always “solid”
+    :type type: :obj:`str`
+
+    :param color: The color of the background fill in the RGB24 format
+    :type color: :class:`int`
+
+    :return: Instance of the class
+    :rtype: :class:`BackgroundFillSolid`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+
+    def __init__(self, type, color, **kwargs):
+        self.type: str = type
+        self.color: int = color
+
+
+# noinspection PyShadowingBuiltins
+class BackgroundFillGradient(BackgroundFill):
+    """
+    The background is a gradient fill.
+
+    Telegram documentation: https://core.telegram.org/bots/api#backgroundfillgradient
+
+    :param type: Type of the background fill, always “gradient”
+    :type type: :obj:`str`
+
+    :param top_color: Top color of the gradient in the RGB24 format
+    :type top_color: :class:`int`
+
+    :param bottom_color: Bottom color of the gradient in the RGB24 format
+    :type bottom_color: :class:`int`
+
+    :param rotation_angle: Clockwise rotation angle of the background fill in degrees; 0-359
+    :type rotation_angle: :class:`int`
+
+    :return: Instance of the class
+    :rtype: :class:`BackgroundFillGradient`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+
+    def __init__(self, type, top_color, bottom_color, rotation_angle, **kwargs):
+        self.type: str = type
+        self.top_color: int = top_color
+        self.bottom_color: int = bottom_color
+        self.rotation_angle: int = rotation_angle
+
+
+# noinspection PyShadowingBuiltins
+class BackgroundFillFreeformGradient(BackgroundFill):
+    """
+    The background is a freeform gradient that rotates after every message in the chat.
+
+    Telegram documentation: https://core.telegram.org/bots/api#backgroundfillfreeformgradient
+
+    :param type: Type of the background fill, always “freeform_gradient”
+    :type type: :obj:`str`
+
+    :param colors: A list of the 3 or 4 base colors that are used to generate the freeform gradient in the RGB24 format
+    :type colors: :obj:`list` of :class:`int`
+
+    :return: Instance of the class
+    :rtype: :class:`BackgroundFillFreeformGradient`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+
+    def __init__(self, type, colors, **kwargs):
+        self.type: str = type
+        self.colors: List[int] = colors
+
+
+class BackgroundType(ABC, JsonDeserializable):
+    """
+    This object describes the type of a background. Currently, it can be one of
+        BackgroundTypeFill
+        BackgroundTypeWallpaper
+        BackgroundTypePattern
+        BackgroundTypeChatTheme
+
+    Telegram documentation: https://core.telegram.org/bots/api#backgroundtype
+
+    :return: Instance of the class
+    :rtype: :class:`BackgroundTypeFill` or :class:`BackgroundTypeWallpaper` or :class:`BackgroundTypePattern` or :class:`BackgroundTypeChatTheme`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        if obj["type"] == "fill":
+            return BackgroundTypeFill.de_json(obj)
+        elif obj["type"] == "wallpaper":
+            return BackgroundTypeWallpaper.de_json(obj)
+        elif obj["type"] == "pattern":
+            return BackgroundTypePattern.de_json(obj)
+        elif obj["type"] == "chat_theme":
+            return BackgroundTypeChatTheme.de_json(obj)
+        return None
+
+
+# noinspection PyShadowingBuiltins
+class BackgroundTypeFill(BackgroundFill):
+    """
+    The background is automatically filled based on the selected colors.
+
+    Telegram documentation: https://core.telegram.org/bots/api#backgroundtypefill
+
+    :param type: Type of the background, always “fill”
+    :type type: :obj:`str`
+
+    :param fill: The background fill
+    :type fill: :class:`BackgroundFill`
+
+    :param dark_theme_dimming: Dimming of the background in dark themes, as a percentage; 0-100
+    :type dark_theme_dimming: :obj:`int`
+
+    :return: Instance of the class
+    :rtype: :class:`BackgroundTypeFill`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        obj['fill'] = BackgroundFill.de_json(obj['fill'])
+        return cls(**obj)
+
+    def __init__(self, type, fill, dark_theme_dimming, **kwargs):
+        self.type: str = type
+        self.fill: BackgroundFill = fill
+        self.dark_theme_dimming: int = dark_theme_dimming
+
+
+# noinspection PyShadowingBuiltins
+class BackgroundTypeWallpaper(BackgroundFill):
+    """
+    The background is a wallpaper in the JPEG format.
+
+    Telegram documentation: https://core.telegram.org/bots/api#backgroundtypewallpaper
+
+    :param type: Type of the background, always “wallpaper”
+    :type type: :obj:`str`
+
+    :param document: Document with the wallpaper
+    :type document: :class:`Document`
+
+    :param dark_theme_dimming: Dimming of the background in dark themes, as a percentage; 0-100
+    :type dark_theme_dimming: :obj:`int`
+
+    :param is_blurred: Optional. True, if the wallpaper is downscaled to fit in a 450x450 square and then box-blurred with radius 12
+    :type is_blurred: :obj:`bool`
+
+    :param is_moving: Optional. True, if the background moves slightly when the device is tilted
+    :type is_moving: :obj:`bool`
+
+    :return: Instance of the class
+    :rtype: :class:`BackgroundTypeWallpaper`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        obj['document'] = Document.de_json(obj['document'])
+        return cls(**obj)
+
+    def __init__(self, type, document, dark_theme_dimming, is_blurred=None, is_moving=None, **kwargs):
+        self.type: str = type
+        self.document: Document = document
+        self.dark_theme_dimming: int = dark_theme_dimming
+        self.is_blurred: Optional[bool] = is_blurred
+        self.is_moving: Optional[bool] = is_moving
+
+
+# noinspection PyShadowingBuiltins
+class BackgroundTypePattern(BackgroundFill):
+    """
+    The background is a wallpaper in the JPEG format.
+
+    Telegram documentation: https://core.telegram.org/bots/api#backgroundtypepattern
+
+    :param type: Type of the background, always “pattern”
+    :type type: :obj:`str`
+
+    :param document: Document with the pattern
+    :type document: :class:`Document`
+
+    :param fill: The background fill that is combined with the pattern
+    :type fill: :class:`BackgroundFill`
+
+    :param intensity: Intensity of the pattern when it is shown above the filled background; 0-100
+    :type intensity: :obj:`int`
+
+    :param is_inverted: Optional. True, if the background fill must be applied only to the pattern itself. All other pixels are black in this case. For dark themes only
+    :type is_inverted: :obj:`bool`
+
+    :param is_moving: Optional. True, if the background moves slightly when the device is tilted
+    :type is_moving: :obj:`bool`
+
+    :return: Instance of the class
+    :rtype: :class:`BackgroundTypePattern`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        obj['document'] = Document.de_json(obj['document'])
+        return cls(**obj)
+
+    def __init__(self, type, document, fill, intensity, is_inverted=None, is_moving=None, **kwargs):
+        self.type: str = type
+        self.document: Document = document
+        self.fill: BackgroundFill = fill
+        self.intensity: int = intensity
+        self.is_inverted: Optional[bool] = is_inverted
+        self.is_moving: Optional[bool] = is_moving
+
+
+# noinspection PyShadowingBuiltins
+class BackgroundTypeChatTheme(BackgroundFill):
+    """
+    The background is taken directly from a built-in chat theme.
+
+    Telegram documentation: https://core.telegram.org/bots/api#backgroundtypechattheme
+
+    :param type: Type of the background, always “chat_theme”
+    :type type: :obj:`str`
+
+    :param theme_name: Intensity of the pattern when it is shown above the filled background; 0-100
+    :type theme_name: :obj:`str`
+
+    :return: Instance of the class
+    :rtype: :class:`BackgroundTypeChatTheme`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+
+    def __init__(self, type, theme_name, **kwargs):
+        self.type: str = type
+        self.theme_name: str = theme_name
+
+
+# noinspection PyShadowingBuiltins
+class ChatBackground(JsonDeserializable):
+    """
+    This object represents a chat background.
+
+    Telegram documentation: https://core.telegram.org/bots/api#chatbackground
+
+    :param type: Type of the background
+    :type type: :class:`BackgroundType`
+
+    :return: Instance of the class
+    :rtype: :class:`ChatBackground`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        obj['type'] = BackgroundType.de_json(obj['type'])
+        return cls(**obj)
+
+    def __init__(self, type, **kwargs):
+        self.type: BackgroundType = type
+
+
+class RevenueWithdrawalState(JsonDeserializable):
+    """
+    This object describes the state of a revenue withdrawal operation. Currently, it can be one of
+        RevenueWithdrawalStatePending
+        RevenueWithdrawalStateSucceeded
+        RevenueWithdrawalStateFailed
+
+    Telegram documentation: https://core.telegram.org/bots/api#revenuewithdrawalstate
+
+    :param type: Type of the state, always “pending” or “succeeded” or “failed”
+    :type type: :obj:`str`
+
+    :return: Instance of the class
+    :rtype: :class:`RevenueWithdrawalStatePending` or :class:`RevenueWithdrawalStateSucceeded` or :class:`RevenueWithdrawalStateFailed`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        if obj["type"] == "pending":
+            return RevenueWithdrawalStatePending.de_json(obj)
+        elif obj["type"] == "succeeded":
+            return RevenueWithdrawalStateSucceeded.de_json(obj)
+        elif obj["type"] == "failed":
+            return RevenueWithdrawalStateFailed.de_json(obj)
+        return None
+    
+
+class RevenueWithdrawalStatePending(RevenueWithdrawalState):
+    """
+    The withdrawal is in progress.
+
+    Telegram documentation: https://core.telegram.org/bots/api#revenuewithdrawalstatepending
+
+    :param type: Type of the state, always “pending”
+    :type type: :obj:`str`
+
+    :return: Instance of the class
+    :rtype: :class:`RevenueWithdrawalStatePending`
+    """
+
+    def __init__(self, type, **kwargs):
+        self.type: str = type
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+
+
+class RevenueWithdrawalStateSucceeded(RevenueWithdrawalState):
+    """
+    The withdrawal succeeded.
+
+    Telegram documentation: https://core.telegram.org/bots/api#revenuewithdrawalstatesucceeded
+
+    :param type: Type of the state, always “succeeded”
+    :type type: :obj:`str`
+
+    :param date: Date the withdrawal was completed in Unix time
+    :type date: :obj:`int`
+
+    :param url: An HTTPS URL that can be used to see transaction details
+    :type url: :obj:`str`
+
+    :return: Instance of the class
+    :rtype: :class:`RevenueWithdrawalStateSucceeded`
+    """
+
+    def __init__(self, type, date, url, **kwargs):
+        self.type: str = type
+        self.date: int = date
+        self.url: str = url
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+    
+
+    
+class RevenueWithdrawalStateFailed(RevenueWithdrawalState):
+    """
+    The withdrawal failed and the transaction was refunded.
+
+    Telegram documentation: https://core.telegram.org/bots/api#revenuewithdrawalstatefailed
+
+    :param type: Type of the state, always “failed”
+    :type type: :obj:`str`
+
+    :return: Instance of the class
+    :rtype: :class:`RevenueWithdrawalStateFailed`
+    """
+
+    def __init__(self, type, **kwargs):
+        self.type: str = type
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+
+
+class TransactionPartner(JsonDeserializable):
+    """
+    This object describes the source of a transaction, or its recipient for outgoing transactions. Currently, it can be one of
+        TransactionPartnerFragment
+        TransactionPartnerUser
+        TransactionPartnerOther
+
+    Telegram documentation: https://core.telegram.org/bots/api#transactionpartner
+
+    :param type: Type of the transaction partner
+    :type type: :obj:`str`
+
+    :return: Instance of the class
+    :rtype: :class:`TransactionPartnerFragment` or :class:`TransactionPartnerUser` or :class:`TransactionPartnerOther`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        if obj["type"] == "fragment":
+            return TransactionPartnerFragment.de_json(obj)
+        elif obj["type"] == "user":
+            return TransactionPartnerUser.de_json(obj)
+        elif obj["type"] == "other":
+            return TransactionPartnerOther.de_json(obj)
+        
+class TransactionPartnerFragment(TransactionPartner):
+    """
+    Describes a withdrawal transaction with Fragment.
+
+    Telegram documentation: https://core.telegram.org/bots/api#transactionpartnerfragment
+
+    :param type: Type of the transaction partner, always “fragment”
+    :type type: :obj:`str`
+
+    :param withdrawal_state: Optional. State of the transaction if the transaction is outgoing
+    :type withdrawal_state: :class:`RevenueWithdrawalState`
+
+    :return: Instance of the class
+    :rtype: :class:`TransactionPartnerFragment`
+
+    """
+
+    def __init__(self, type, withdrawal_state=None, **kwargs):
+        self.type: str = type
+        self.withdrawal_state: Optional[RevenueWithdrawalState] = withdrawal_state
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        if 'withdrawal_state' in obj:
+            obj['withdrawal_state'] = RevenueWithdrawalState.de_json(obj['withdrawal_state'])
+        return cls(**obj)
+    
+
+
+class TransactionPartnerUser(TransactionPartner):
+    """
+    Describes a transaction with a user.
+
+    Telegram documentation: https://core.telegram.org/bots/api#transactionpartneruser
+
+    :param type: Type of the transaction partner, always “user”
+    :type type: :obj:`str`
+
+    :param user: Information about the user
+    :type user: :class:`User`
+
+    :return: Instance of the class
+    :rtype: :class:`TransactionPartnerUser`
+    """
+
+    def __init__(self, type, user, **kwargs):
+        self.type: str = type
+        self.user: User = user
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        obj['user'] = User.de_json(obj['user'])
+        return cls(**obj)
+    
+        
+class TransactionPartnerOther(TransactionPartner):
+    """
+    Describes a transaction with an unknown source or recipient.
+
+    Telegram documentation: https://core.telegram.org/bots/api#transactionpartnerother
+
+    :param type: Type of the transaction partner, always “other”
+    :type type: :obj:`str`
+
+    :return: Instance of the class
+    :rtype: :class:`TransactionPartnerOther`
+    """
+
+    def __init__(self, type, **kwargs):
+        self.type: str = type
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        return cls(**obj)
+    
+
+
+class StarTransaction(JsonDeserializable):
+    """
+    Describes a Telegram Star transaction.
+
+    Telegram documentation: https://core.telegram.org/bots/api#startransaction
+
+    :param id: Unique identifier of the transaction. Coincides with the identifer of the original transaction for refund transactions. Coincides with SuccessfulPayment.telegram_payment_charge_id for successful incoming payments from users.
+    :type id: :obj:`str`
+
+    :param amount: Number of Telegram Stars transferred by the transaction
+    :type amount: :obj:`int`
+
+    :param date: Date the transaction was created in Unix time
+    :type date: :obj:`int`
+
+    :param source: Optional. Source of an incoming transaction (e.g., a user purchasing goods or services, Fragment refunding a failed withdrawal). Only for incoming transactions
+    :type source: :class:`TransactionPartner`
+
+    :param receiver: Optional. Receiver of an outgoing transaction (e.g., a user for a purchase refund, Fragment for a withdrawal). Only for outgoing transactions
+    :type receiver: :class:`TransactionPartner`
+
+    :return: Instance of the class
+    :rtype: :class:`StarTransaction`
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        if 'source' in obj:
+            obj['source'] = TransactionPartner.de_json(obj['source'])
+        if 'receiver' in obj:
+            obj['receiver'] = TransactionPartner.de_json(obj['receiver'])
+        return cls(**obj)
+    
+    def __init__(self, id, amount, date, source=None, receiver=None, **kwargs):
+        self.id: str = id
+        self.amount: int = amount
+        self.date: int = date
+        self.source: Optional[TransactionPartner] = source
+        self.receiver: Optional[TransactionPartner] = receiver
+
+
+class StarTransactions(JsonDeserializable):
+    """
+    Contains a list of Telegram Star transactions.
+
+    Telegram documentation: https://core.telegram.org/bots/api#startransactions
+
+    :param transactions: The list of transactions
+    :type transactions: :obj:`list` of :class:`StarTransaction`
+
+    :return: Instance of the class
+    :rtype: :class:`StarTransactions`
+
+    """
+
+    @classmethod
+    def de_json(cls, json_string):
+        if json_string is None: return None
+        obj = cls.check_json(json_string)
+        obj['transactions'] = [StarTransaction.de_json(transaction) for transaction in obj['transactions']]
+        return cls(**obj)
+    
+    def __init__(self, transactions, **kwargs):
+        self.transactions: List[StarTransaction] = transactions

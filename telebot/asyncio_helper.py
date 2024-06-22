@@ -281,7 +281,7 @@ async def send_message(
         reply_markup=None,
         parse_mode=None, disable_notification=None, timeout=None,
         entities=None, protect_content=None,
-        message_thread_id=None, reply_parameters=None, link_preview_options=None):
+        message_thread_id=None, reply_parameters=None, link_preview_options=None, business_connection_id=None, message_effect_id=None):
     method_name = 'sendMessage'
     params = {'chat_id': str(chat_id), 'text': text}
     if link_preview_options is not None:
@@ -302,6 +302,10 @@ async def send_message(
         params['protect_content'] = protect_content
     if message_thread_id:
         params['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        params['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        params['message_effect_id'] = message_effect_id
     
     return await _process_request(token, method_name, params=params)
 
@@ -350,15 +354,22 @@ async def get_chat_member_count(token, chat_id):
     return await _process_request(token, method_url, params=payload)
 
 
-async def set_sticker_set_thumbnail(token, name, user_id, thumbnail):
+
+async def replace_sticker_in_set(token, user_id, name, old_sticker, sticker):
+    method_url = r'replaceStickerInSet'
+    payload = {'user_id': user_id, 'name': name, 'old_sticker': old_sticker, 'sticker': sticker.to_json()}
+    return await _process_request(token, method_url, params=payload)
+
+async def set_sticker_set_thumbnail(token, name, user_id, thumbnail, format):
     method_url = r'setStickerSetThumbnail'
-    payload = {'name': name, 'user_id': user_id}
+    payload = {'name': name, 'user_id': user_id, 'format': format}
     files = {}
     if thumbnail:
         if not isinstance(thumbnail, str):
             files['thumbnail'] = thumbnail
         else:
             payload['thumbnail'] = thumbnail
+        
     return await _process_request(token, method_url, params=payload, files=files or None)
 
 
@@ -405,7 +416,7 @@ async def forward_message(
 
 async def copy_message(token, chat_id, from_chat_id, message_id, caption=None, parse_mode=None, caption_entities=None,
                  disable_notification=None,  
-                 reply_markup=None, timeout=None, protect_content=None, message_thread_id=None, reply_parameters=None):
+                 reply_markup=None, timeout=None, protect_content=None, message_thread_id=None, reply_parameters=None, show_caption_above_media=None):
     method_url = r'copyMessage'
     payload = {'chat_id': chat_id, 'from_chat_id': from_chat_id, 'message_id': message_id}
     if caption is not None:
@@ -413,7 +424,7 @@ async def copy_message(token, chat_id, from_chat_id, message_id, caption=None, p
     if parse_mode:
         payload['parse_mode'] = parse_mode
     if caption_entities is not None:
-        payload['caption_entities'] = await _convert_entites(caption_entities)
+        payload['caption_entities'] = json.dumps(types.MessageEntity.to_list_of_dicts(caption_entities))
     if disable_notification is not None:
         payload['disable_notification'] = disable_notification
     if reply_parameters is not None:
@@ -426,6 +437,8 @@ async def copy_message(token, chat_id, from_chat_id, message_id, caption=None, p
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if show_caption_above_media is not None:
+        payload['show_caption_above_media'] = show_caption_above_media
     return await _process_request(token, method_url, params=payload)
 
 
@@ -433,7 +446,7 @@ async def send_dice(
         token, chat_id,
         emoji=None, disable_notification=None, 
         reply_markup=None, timeout=None,  protect_content=None,
-        message_thread_id=None,reply_parameters=None):
+        message_thread_id=None,reply_parameters=None, business_connection_id=None, message_effect_id=None):
     method_url = r'sendDice'
     payload = {'chat_id': chat_id}
     if emoji:
@@ -450,6 +463,10 @@ async def send_dice(
         payload['message_thread_id'] = message_thread_id
     if reply_parameters is not None:
         payload['reply_parameters'] = json.dumps(reply_parameters.to_dict())
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload)
 
 
@@ -458,7 +475,8 @@ async def send_photo(
         caption=None,  reply_markup=None,
         parse_mode=None, disable_notification=None, timeout=None,
         caption_entities=None,  protect_content=None,
-        message_thread_id=None, has_spoiler=None,reply_parameters=None):
+        message_thread_id=None, has_spoiler=None,reply_parameters=None,
+        business_connection_id=None, message_effect_id=None, show_caption_above_media=None):
     method_url = r'sendPhoto'
     payload = {'chat_id': chat_id}
     files = None
@@ -488,13 +506,19 @@ async def send_photo(
         payload['message_thread_id'] = message_thread_id
     if has_spoiler is not None:
         payload['has_spoiler'] = has_spoiler
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
+    if show_caption_above_media is not None:
+        payload['show_caption_above_media'] = show_caption_above_media
     return await _process_request(token, method_url, params=payload, files=files, method='post')
 
 
 async def send_media_group(
         token, chat_id, media,
         disable_notification=None, 
-        timeout=None,  protect_content=None, message_thread_id=None,reply_parameters=None):
+        timeout=None,  protect_content=None, message_thread_id=None,reply_parameters=None, business_connection_id=None, message_effect_id=None):
     method_url = r'sendMediaGroup'
     media_json, files = await convert_input_media_array(media)
     payload = {'chat_id': chat_id, 'media': media_json}
@@ -508,6 +532,10 @@ async def send_media_group(
         payload['message_thread_id'] = message_thread_id
     if reply_parameters is not None:
         payload['reply_parameters'] = json.dumps(reply_parameters.to_dict())
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(
         token, method_url, params=payload,
         method='post' if files else 'get',
@@ -519,7 +547,8 @@ async def send_location(
         live_period=None,  
         reply_markup=None, disable_notification=None, 
         timeout=None, horizontal_accuracy=None, heading=None,
-        proximity_alert_radius=None,  protect_content=None, message_thread_id=None,reply_parameters=None):
+        proximity_alert_radius=None,  protect_content=None, message_thread_id=None,reply_parameters=None, business_connection_id=None,
+        message_effect_id=None):
     method_url = r'sendLocation'
     payload = {'chat_id': chat_id, 'latitude': latitude, 'longitude': longitude}
     if live_period:
@@ -542,13 +571,16 @@ async def send_location(
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload)
 
 
 async def edit_message_live_location(
-        token, latitude, longitude, chat_id=None, message_id=None,
-        inline_message_id=None, reply_markup=None, timeout=None,
-        horizontal_accuracy=None, heading=None, proximity_alert_radius=None):
+        token, latitude, longitude, chat_id=None, message_id=None, inline_message_id=None, reply_markup=None,
+        timeout=None, horizontal_accuracy=None, heading=None, proximity_alert_radius=None, live_period=None, business_connection_id=None):
     method_url = r'editMessageLiveLocation'
     payload = {'latitude': latitude, 'longitude': longitude}
     if chat_id:
@@ -561,18 +593,22 @@ async def edit_message_live_location(
         payload['heading'] = heading
     if proximity_alert_radius:
         payload['proximity_alert_radius'] = proximity_alert_radius
+    if live_period:
+        payload['live_period'] = live_period
     if inline_message_id:
         payload['inline_message_id'] = inline_message_id
     if reply_markup:
         payload['reply_markup'] = await _convert_markup(reply_markup)
     if timeout:
         payload['timeout'] = timeout
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
     return await _process_request(token, method_url, params=payload)
 
 
 async def stop_message_live_location(
         token, chat_id=None, message_id=None,
-        inline_message_id=None, reply_markup=None, timeout=None):
+        inline_message_id=None, reply_markup=None, timeout=None, business_connection_id=None):
     method_url = r'stopMessageLiveLocation'
     payload = {}
     if chat_id:
@@ -585,6 +621,8 @@ async def stop_message_live_location(
         payload['reply_markup'] = await _convert_markup(reply_markup)
     if timeout:
         payload['timeout'] = timeout
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
     return await _process_request(token, method_url, params=payload)
 
 
@@ -593,7 +631,8 @@ async def send_venue(
         foursquare_id=None, foursquare_type=None, disable_notification=None,
          reply_markup=None, timeout=None,
          google_place_id=None,
-        google_place_type=None, protect_content=None, message_thread_id=None,reply_parameters=None):
+        google_place_type=None, protect_content=None, message_thread_id=None,reply_parameters=None, business_connection_id=None,
+        message_effect_id=None):
     method_url = r'sendVenue'
     payload = {'chat_id': chat_id, 'latitude': latitude, 'longitude': longitude, 'title': title, 'address': address}
     if foursquare_id:
@@ -616,13 +655,17 @@ async def send_venue(
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload)
 
 
 async def send_contact(
         token, chat_id, phone_number, first_name, last_name=None, vcard=None,
         disable_notification=None,  reply_markup=None, timeout=None,
-         protect_content=None, message_thread_id=None,reply_parameters=None):
+         protect_content=None, message_thread_id=None,reply_parameters=None, business_connection_id=None, message_effect_id=None):
     method_url = r'sendContact'
     payload = {'chat_id': chat_id, 'phone_number': phone_number, 'first_name': first_name}
     if last_name:
@@ -641,23 +684,30 @@ async def send_contact(
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload)
 
 
-async def send_chat_action(token, chat_id, action, timeout=None, message_thread_id=None):
+async def send_chat_action(token, chat_id, action, timeout=None, message_thread_id=None, business_connection_id=None):
     method_url = r'sendChatAction'
     payload = {'chat_id': chat_id, 'action': action}
     if timeout:
         payload['timeout'] = timeout
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
     return await _process_request(token, method_url, params=payload)
 
 
 async def send_video(token, chat_id, data, duration=None, caption=None,  reply_markup=None,
                      parse_mode=None, supports_streaming=None, disable_notification=None, timeout=None,
                      thumbnail=None, width=None, height=None, caption_entities=None, 
-                     protect_content=None, message_thread_id=None, has_spoiler=None,reply_parameters=None):
+                     protect_content=None, message_thread_id=None, has_spoiler=None,reply_parameters=None, business_connection_id=None,
+                     message_effect_id=None, show_caption_above_media=None):
     method_url = r'sendVideo'
     payload = {'chat_id': chat_id}
     files = None
@@ -701,6 +751,12 @@ async def send_video(token, chat_id, data, duration=None, caption=None,  reply_m
         payload['message_thread_id'] = message_thread_id
     if has_spoiler is not None:
         payload['has_spoiler'] = has_spoiler
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
+    if show_caption_above_media is not None:
+        payload['show_caption_above_media'] = show_caption_above_media
     return await _process_request(token, method_url, params=payload, files=files, method='post')
 
 
@@ -708,7 +764,7 @@ async def send_animation(
         token, chat_id, data, duration=None, caption=None,  reply_markup=None,
         parse_mode=None, disable_notification=None, timeout=None, thumbnail=None, caption_entities=None,
          width=None, height=None, protect_content=None, message_thread_id=None,
-        has_spoiler=None,reply_parameters=None):
+        has_spoiler=None,reply_parameters=None, business_connection_id=None, message_effect_id=None, show_caption_above_media=None):
     method_url = r'sendAnimation'
     payload = {'chat_id': chat_id}
     files = None
@@ -750,12 +806,18 @@ async def send_animation(
         payload['message_thread_id'] = message_thread_id
     if has_spoiler is not None:
         payload['has_spoiler'] = has_spoiler
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
+    if show_caption_above_media is not None:
+        payload['show_caption_above_media'] = show_caption_above_media
     return await _process_request(token, method_url, params=payload, files=files, method='post')
 
 
 async def send_voice(token, chat_id, voice, caption=None, duration=None,  reply_markup=None,
                parse_mode=None, disable_notification=None, timeout=None, caption_entities=None,
-                protect_content=None, message_thread_id=None,reply_parameters=None):
+                protect_content=None, message_thread_id=None,reply_parameters=None,business_connection_id=None, message_effect_id=None):
     method_url = r'sendVoice'
     payload = {'chat_id': chat_id}
     files = None
@@ -783,12 +845,16 @@ async def send_voice(token, chat_id, voice, caption=None, duration=None,  reply_
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload, files=files, method='post')
 
 
 async def send_video_note(token, chat_id, data, duration=None, length=None,  reply_markup=None,
                           disable_notification=None, timeout=None, thumbnail=None,  protect_content=None,
-                          message_thread_id=None,reply_parameters=None):
+                          message_thread_id=None,reply_parameters=None, business_connection_id=None, message_effect_id=None):
     method_url = r'sendVideoNote'
     payload = {'chat_id': chat_id}
     files = None
@@ -822,12 +888,17 @@ async def send_video_note(token, chat_id, data, duration=None, length=None,  rep
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload, files=files, method='post')
 
 
 async def send_audio(token, chat_id, audio, caption=None, duration=None, performer=None, title=None, 
                      reply_markup=None, parse_mode=None, disable_notification=None, timeout=None, thumbnail=None,
-                     caption_entities=None,  protect_content=None, message_thread_id=None,reply_parameters=None):
+                     caption_entities=None,  protect_content=None, message_thread_id=None,reply_parameters=None, business_connection_id=None,
+                     message_effect_id=None):
     method_url = r'sendAudio'
     payload = {'chat_id': chat_id}
     files = None
@@ -867,13 +938,17 @@ async def send_audio(token, chat_id, audio, caption=None, duration=None, perform
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload, files=files, method='post')
 
 
 async def send_data(token, chat_id, data, data_type,  reply_markup=None, parse_mode=None,
                     disable_notification=None, timeout=None, caption=None, thumbnail=None, caption_entities=None,
                      disable_content_type_detection=None, visible_file_name=None, protect_content=None,
-                    message_thread_id=None, emoji=None,reply_parameters=None):
+                    message_thread_id=None, emoji=None,reply_parameters=None, business_connection_id=None, message_effect_id=None):
     method_url = await get_method_by_type(data_type)
     payload = {'chat_id': chat_id}
     files = None
@@ -914,6 +989,10 @@ async def send_data(token, chat_id, data, data_type,  reply_markup=None, parse_m
         payload['message_thread_id'] = message_thread_id
     if emoji:
         payload['emoji'] = emoji
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload, files=files, method='post')
 
 
@@ -1234,6 +1313,10 @@ async def set_my_commands(token, commands, scope=None, language_code=None):
         payload['language_code'] = language_code
     return await _process_request(token, method_url, params=payload, method='post')
 
+async def get_business_connection(token, business_connection_id):
+    method_url = 'getBusinessConnection'
+    payload = {'business_connection_id': business_connection_id}
+    return await _process_request(token, method_url, params=payload , method='post')
 
 async def delete_my_commands(token, scope=None, language_code=None):
     method_url = r'deleteMyCommands'
@@ -1277,8 +1360,9 @@ async def unpin_all_chat_messages(token, chat_id):
 
 # Updating messages
 
-async def edit_message_text(token, text, chat_id=None, message_id=None, inline_message_id=None, parse_mode=None,
-                      entities = None, reply_markup=None, link_preview_options=None):
+async def edit_message_text(
+        token, text, chat_id=None, message_id=None, inline_message_id=None, parse_mode=None, entities = None,
+        reply_markup=None, link_preview_options=None, business_connection_id=None, timeout=None):
     method_url = r'editMessageText'
     payload = {'text': text}
     if chat_id:
@@ -1295,11 +1379,16 @@ async def edit_message_text(token, text, chat_id=None, message_id=None, inline_m
         payload['reply_markup'] = await _convert_markup(reply_markup)
     if link_preview_options is not None:
         payload['link_preview_options'] = link_preview_options.to_json()
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if timeout:
+        payload['timeout'] = timeout
     return await _process_request(token, method_url, params=payload, method='post')
 
 
-async def edit_message_caption(token, caption, chat_id=None, message_id=None, inline_message_id=None,
-                         parse_mode=None, caption_entities=None,reply_markup=None):
+async def edit_message_caption(
+        token, caption, chat_id=None, message_id=None, inline_message_id=None, parse_mode=None, caption_entities=None,
+        reply_markup=None, show_caption_above_media=None, business_connection_id=None, timeout=None):
     method_url = r'editMessageCaption'
     payload = {'caption': caption}
     if chat_id:
@@ -1314,10 +1403,18 @@ async def edit_message_caption(token, caption, chat_id=None, message_id=None, in
         payload['caption_entities'] = json.dumps(types.MessageEntity.to_list_of_dicts(caption_entities))
     if reply_markup:
         payload['reply_markup'] = await _convert_markup(reply_markup)
+    if show_caption_above_media is not None:
+        payload['show_caption_above_media'] = show_caption_above_media
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if timeout:
+        payload['timeout'] = timeout
     return await _process_request(token, method_url, params=payload, method='post')
 
 
-async def edit_message_media(token, media, chat_id=None, message_id=None, inline_message_id=None, reply_markup=None):
+async def edit_message_media(
+        token, media, chat_id=None, message_id=None, inline_message_id=None, reply_markup=None,
+        business_connection_id=None, timeout=None):
     method_url = r'editMessageMedia'
     media_json, file = await convert_input_media(media)
     payload = {'media': media_json}
@@ -1329,10 +1426,16 @@ async def edit_message_media(token, media, chat_id=None, message_id=None, inline
         payload['inline_message_id'] = inline_message_id
     if reply_markup:
         payload['reply_markup'] = await _convert_markup(reply_markup)
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if timeout:
+        payload['timeout'] = timeout
     return await _process_request(token, method_url, params=payload, files=file, method='post' if file else 'get')
 
 
-async def edit_message_reply_markup(token, chat_id=None, message_id=None, inline_message_id=None, reply_markup=None):
+async def edit_message_reply_markup(
+        token, chat_id=None, message_id=None, inline_message_id=None, reply_markup=None, business_connection_id=None,
+        timeout=None):
     method_url = r'editMessageReplyMarkup'
     payload = {}
     if chat_id:
@@ -1343,6 +1446,10 @@ async def edit_message_reply_markup(token, chat_id=None, message_id=None, inline
         payload['inline_message_id'] = inline_message_id
     if reply_markup:
         payload['reply_markup'] = await _convert_markup(reply_markup)
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if timeout:
+        payload['timeout'] = timeout
     return await _process_request(token, method_url, params=payload, method='post')
 
 
@@ -1359,7 +1466,7 @@ async def delete_message(token, chat_id, message_id, timeout=None):
 async def send_game(
         token, chat_id, game_short_name,
         disable_notification=None,  reply_markup=None, timeout=None,
-         protect_content=None, message_thread_id=None,reply_parameters=None):
+         protect_content=None, message_thread_id=None,reply_parameters=None, business_connection_id=None, message_effect_id=None):
     method_url = r'sendGame'
     payload = {'chat_id': chat_id, 'game_short_name': game_short_name}
     if disable_notification is not None:
@@ -1374,6 +1481,10 @@ async def send_game(
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload)
 
 
@@ -1439,7 +1550,7 @@ async def send_invoice(
         send_phone_number_to_provider = None, send_email_to_provider = None, is_flexible=None,
         disable_notification=None,  reply_markup=None, provider_data=None,
         timeout=None,  max_tip_amount=None, suggested_tip_amounts=None,
-        protect_content=None, message_thread_id=None,reply_parameters=None):
+        protect_content=None, message_thread_id=None, reply_parameters=None, message_effect_id=None):
     """
     Use this method to send invoices. On success, the sent Message is returned.
     :param token: Bot's token (you don't need to fill this)
@@ -1471,12 +1582,14 @@ async def send_invoice(
         At most 4 suggested tip amounts can be specified. The suggested tip amounts must be positive, passed in a strictly increased order and must not exceed max_tip_amount.
     :param protect_content: Protects the contents of the sent message from forwarding and saving
     :param message_thread_id: Unique identifier for the target message thread (topic) of the forum; for forum supergroups only
+    :param reply_parameters: A JSON-serialized object for an inline keyboard. If empty, one 'Pay total price' button will be shown. If not empty, the first button must be a Pay button.
+    :param message_effect_id: Unique identifier of the message effect to be added to the message; for private chats only
     :return:
     """
     method_url = r'sendInvoice'
     payload = {'chat_id': chat_id, 'title': title, 'description': description, 'payload': invoice_payload,
-               'provider_token': provider_token, 'currency': currency,
-               'prices': await _convert_list_json_serializable(prices)}
+                'currency': currency,
+                'prices': await _convert_list_json_serializable(prices)}
     if start_parameter:
         payload['start_parameter'] = start_parameter
     if photo_url:
@@ -1519,6 +1632,10 @@ async def send_invoice(
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
+    if provider_token is not None:
+        payload['provider_token'] = provider_token
     return await _process_request(token, method_url, params=payload)
 
 
@@ -1556,11 +1673,25 @@ async def answer_pre_checkout_query(token, pre_checkout_query_id, ok, error_mess
         payload['error_message'] = error_message
     return await _process_request(token, method_url, params=payload)
 
+async def get_star_transactions(token, offset=None, limit=None):
+    method_url = 'getStarTransactions'
+    payload = {}
+    if offset:
+        payload['offset'] = offset
+    if limit:
+        payload['limit'] = limit
+    return await _process_request(token, method_url, params=payload)
+
+async def refund_star_payment(token, user_id, telegram_payment_charge_id):
+    method_url = 'refundStarPayment'
+    payload = {'user_id': user_id, 'telegram_payment_charge_id': telegram_payment_charge_id}
+    return await _process_request(token, method_url, params=payload)
+
 
 async def unpin_all_general_forum_topic_messages(token, chat_id):
     method_url = 'unpinAllGeneralForumTopicMessages'
     payload = {'chat_id': chat_id}
-    return await _process_request(token, method_url, params=payload, method='post')
+    return await _process_request(token, method_url, params=payload)
 
 # InlineQuery
 
@@ -1606,7 +1737,7 @@ async def answer_inline_query(token, inline_query_id, results, cache_time=None, 
         payload['next_offset'] = next_offset
     if button is not None:
         payload["button"] = button.to_json()
-    
+
 
     return await _process_request(token, method_url, params=payload, method='post')
 
@@ -1664,12 +1795,12 @@ async def set_sticker_set_title(token, name, title):
     return await _process_request(token, method_url, params=payload, method='post')
 
 async def create_new_sticker_set(
-        token, user_id, name, title, stickers, sticker_format, sticker_type=None, needs_repainting=None):
+        token, user_id, name, title, stickers, sticker_type=None, needs_repainting=None):
     method_url = 'createNewStickerSet'
-    payload = {'user_id': user_id, 'name': name, 'title': title, 'sticker_format': sticker_format}
+    payload = {'user_id': user_id, 'name': name, 'title': title}
     if sticker_type:
         payload['sticker_type'] = sticker_type
-    if needs_repainting:
+    if needs_repainting is not None:
         payload['needs_repainting'] = needs_repainting
 
     files = {}
@@ -1686,7 +1817,7 @@ async def create_new_sticker_set(
     
     payload['stickers'] = json.dumps(lst)
 
-    
+
     return await _process_request(token, method_url, params=payload, files=files, method='post')
 
 
@@ -1694,7 +1825,7 @@ async def add_sticker_to_set(token, user_id, name, sticker):
     method_url = 'addStickerToSet'
     json_dict, files = sticker.convert_input_sticker()
     payload = {'user_id': user_id, 'name': name, 'sticker': json_dict}
-    
+
 
     return await _process_request(token, method_url, params=payload, files=files, method='post')
 
@@ -1718,7 +1849,7 @@ async def create_invoice_link(token, title, description, payload, provider_token
             need_email=None, need_shipping_address=None, send_phone_number_to_provider=None,
             send_email_to_provider=None, is_flexible=None):
     method_url = r'createInvoiceLink'
-    payload = {'title': title, 'description': description, 'payload': payload, 'provider_token': provider_token,
+    payload = {'title': title, 'description': description, 'payload': payload,
                 'currency': currency, 'prices': await _convert_list_json_serializable(prices)}
     if max_tip_amount:
         payload['max_tip_amount'] = max_tip_amount
@@ -1748,23 +1879,26 @@ async def create_invoice_link(token, title, description, payload, provider_token
         payload['send_email_to_provider'] = send_email_to_provider
     if is_flexible is not None:
         payload['is_flexible'] = is_flexible
+    if provider_token is not None:
+        payload['provider_token'] = provider_token
     return await _process_request(token, method_url, params=payload, method='post')
 
 
 
 # noinspection PyShadowingBuiltins
 async def send_poll(
-        token, chat_id,
-        question, options,
+        token, chat_id, question, options,
         is_anonymous = None, type = None, allows_multiple_answers = None, correct_option_id = None,
         explanation = None, explanation_parse_mode=None, open_period = None, close_date = None, is_closed = None,
         disable_notification=False,  
-        reply_markup=None, timeout=None, explanation_entities=None, protect_content=None, message_thread_id=None,reply_parameters=None):
+        reply_markup=None, timeout=None, explanation_entities=None, protect_content=None, message_thread_id=None,
+        reply_parameters=None,business_connection_id=None, question_parse_mode=None, question_entities=None, message_effect_id=None):
     method_url = r'sendPoll'
     payload = {
         'chat_id': str(chat_id),
         'question': question,
-        'options': json.dumps(await _convert_poll_options(options))}
+        'options': json.dumps([option.to_dict() for option in options])
+    }
 
     if is_anonymous is not None:
         payload['is_anonymous'] = is_anonymous
@@ -1787,7 +1921,6 @@ async def send_poll(
             payload['close_date'] = close_date
     if is_closed is not None:
         payload['is_closed'] = is_closed
-
     if disable_notification:
         payload['disable_notification'] = disable_notification
     if reply_parameters is not None:
@@ -1803,6 +1936,14 @@ async def send_poll(
         payload['protect_content'] = protect_content
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
+    if question_parse_mode:
+        payload['question_parse_mode'] = question_parse_mode
+    if question_entities:
+        payload['question_entities'] = json.dumps(types.MessageEntity.to_list_of_dicts(question_entities))
+    if message_effect_id:
+        payload['message_effect_id'] = message_effect_id
     return await _process_request(token, method_url, params=payload)
 
 
@@ -1930,32 +2071,6 @@ async def _convert_list_json_serializable(results):
     return '[' + ret + ']'
 
 
-
-async def _convert_entites(entites):
-    if entites is None:
-        return None
-    elif len(entites) == 0:
-        return []
-    elif isinstance(entites[0], types.JsonSerializable):
-        return [entity.to_json() for entity in entites]
-    else:
-        return entites
-
-
-async def _convert_poll_options(poll_options):
-    if poll_options is None:
-        return None
-    elif len(poll_options) == 0:
-        return []
-    elif isinstance(poll_options[0], str):
-        # Compatibility mode with previous bug when only list of string was accepted as poll_options
-        return poll_options
-    elif isinstance(poll_options[0], types.PollOption):
-        return [option.text for option in poll_options]
-    else:
-        return poll_options
-
-
 async def convert_input_media(media):
     if isinstance(media, types.InputMedia):
         return media.convert_input_media()
@@ -1984,11 +2099,13 @@ async def _no_encode(func):
 
     return wrapper
 
-async def stop_poll(token, chat_id, message_id, reply_markup=None):
+async def stop_poll(token, chat_id, message_id, reply_markup=None, business_connection_id=None):
     method_url = r'stopPoll'
     payload = {'chat_id': str(chat_id), 'message_id': message_id}
     if reply_markup:
         payload['reply_markup'] = await _convert_markup(reply_markup)
+    if business_connection_id:
+        payload['business_connection_id'] = business_connection_id
     return await _process_request(token, method_url, params=payload)
 
 # exceptions
