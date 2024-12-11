@@ -10,7 +10,7 @@
 <p align="center">A simple, but extensible Python implementation for the <a href="https://core.telegram.org/bots/api">Telegram Bot API</a>.</p>
 <p align="center">Both synchronous and asynchronous.</p>
 
-## <p align="center">Supported Bot API version: <a href="https://core.telegram.org/bots/api#june-18-2024">7.5</a>!
+## <p align="center">Supported Bot API version: <a href="https://core.telegram.org/bots/api#november-17-2024"><img src="https://img.shields.io/badge/Bot%20API-8.1-blue?logo=telegram" alt="Supported Bot API version"></a>
 
 <h2><a href='https://pytba.readthedocs.io/en/latest/index.html'>Official documentation</a></h2>
 <h2><a href='https://pytba.readthedocs.io/ru/latest/index.html'>Official ru documentation</a></h2>
@@ -69,7 +69,7 @@
 
 ## Getting started
 
-This API is tested with Python 3.8-3.12 and Pypy 3.
+This API is tested with Python 3.9-3.13 and Pypy 3.
 There are two ways to install the library:
 
 * Installation using pip (a Python package manager):
@@ -830,7 +830,7 @@ Here are some examples of template:
 * [RadRetroRobot](https://github.com/Tronikart/RadRetroRobot) by *Tronikart* - Multifunctional Telegram Bot RadRetroRobot.
 * [League of Legends bot](https://telegram.me/League_of_Legends_bot) ([source](https://github.com/i32ropie/lol)) by *i32ropie*
 * [NeoBot](https://github.com/neoranger/NeoBot) by [@NeoRanger](https://github.com/neoranger)
-* [ColorCodeBot](https://t.me/colorcodebot) ([source](https://github.com/andydecleyre/colorcodebot)) - Share code snippets as beautifully syntax-highlighted HTML and/or images.
+* [ColorCodeBot](https://t.me/colorcodebot) ([source](https://github.com/andydecleyre/colorcodebot)) - Share code snippets as beautifully syntax-highlighted images.
 * [ComedoresUGRbot](http://telegram.me/ComedoresUGRbot) ([source](https://github.com/alejandrocq/ComedoresUGRbot)) by [*alejandrocq*](https://github.com/alejandrocq) - Telegram bot to check the menu of Universidad de Granada dining hall.
 * [proxybot](https://github.com/p-hash/proxybot) - Simple Proxy Bot for Telegram. by p-hash
 * [DonantesMalagaBot](https://github.com/vfranch/DonantesMalagaBot) - DonantesMalagaBot facilitates information to Malaga blood donors about the places where they can donate today or in the incoming days. It also records the date of the last donation so that it helps the donors to know when they can donate again. - by vfranch
