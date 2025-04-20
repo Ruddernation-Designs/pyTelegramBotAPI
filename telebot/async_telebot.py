@@ -3337,7 +3337,8 @@ class AsyncTeleBot:
             message_id: int, disable_notification: Optional[bool]=None,
             protect_content: Optional[bool]=None,
             timeout: Optional[int]=None,
-            message_thread_id: Optional[int]=None) -> types.Message:
+            message_thread_id: Optional[int]=None,
+            video_start_timestamp: Optional[int]=None) -> types.Message:
         """
         Use this method to forward messages of any kind.
 
@@ -3355,6 +3356,9 @@ class AsyncTeleBot:
         :param message_id: Message identifier in the chat specified in from_chat_id
         :type message_id: :obj:`int`
 
+        :param video_start_timestamp: New start timestamp for the forwarded video in the message
+        :type video_start_timestamp: :obj:`int`
+        
         :param protect_content: Protects the contents of the forwarded message from forwarding and saving
         :type protect_content: :obj:`bool`
 
@@ -3371,8 +3375,9 @@ class AsyncTeleBot:
         protect_content = self.protect_content if (protect_content is None) else protect_content
 
         return types.Message.de_json(
-            await asyncio_helper.forward_message(self.token, chat_id, from_chat_id, message_id, disable_notification, timeout, protect_content,
-                                                 message_thread_id))
+            await asyncio_helper.forward_message(self.token, chat_id=chat_id, from_chat_id=from_chat_id, message_id=message_id,
+                                                    disable_notification=disable_notification, protect_content=protect_content,
+                                                    timeout=timeout, message_thread_id=message_thread_id, video_start_timestamp=video_start_timestamp))
 
     async def copy_message(
             self, chat_id: Union[int, str], 
@@ -3390,7 +3395,8 @@ class AsyncTeleBot:
             message_thread_id: Optional[int]=None,
             reply_parameters: Optional[types.ReplyParameters]=None,
             show_caption_above_media: Optional[bool]=None,
-            allow_paid_broadcast: Optional[bool]=None) -> types.MessageID:
+            allow_paid_broadcast: Optional[bool]=None,
+            video_start_timestamp: Optional[bool]=None) -> types.MessageID:
         """
         Use this method to copy messages of any kind.
         If some of the specified messages can't be found or copied, they are skipped. Service messages, paid media messages, giveaway messages, giveaway winners messages,
@@ -3405,8 +3411,12 @@ class AsyncTeleBot:
 
         :param from_chat_id: Unique identifier for the chat where the original message was sent (or channel username in the format @channelusername)
         :type from_chat_id: :obj:`int` or :obj:`str`
+
         :param message_id: Message identifier in the chat specified in from_chat_id
         :type message_id: :obj:`int`
+
+        :param video_start_timestamp: New start timestamp for the forwarded video in the message
+        :type video_start_timestamp: :obj:`int`
 
         :param caption: New caption for media, 0-1024 characters after entities parsing. If not specified, the original caption is kept
         :type caption: :obj:`str`
@@ -3478,10 +3488,12 @@ class AsyncTeleBot:
             reply_parameters.allow_sending_without_reply = self.allow_sending_without_reply
 
         return types.MessageID.de_json(
-            await asyncio_helper.copy_message(self.token, chat_id, from_chat_id, message_id, caption, parse_mode, caption_entities,
-                                   disable_notification, reply_markup,
-                                   timeout, protect_content, message_thread_id, reply_parameters, show_caption_above_media=show_caption_above_media,
-                                   allow_paid_broadcast=allow_paid_broadcast))
+            await asyncio_helper.copy_message(self.token, chat_id=chat_id, from_chat_id=from_chat_id, message_id=message_id,
+                                                    caption=caption, parse_mode=parse_mode, caption_entities=caption_entities,
+                                                    disable_notification=disable_notification, protect_content=protect_content,
+                                                    reply_parameters=reply_parameters, reply_markup=reply_markup, timeout=timeout,
+                                                    message_thread_id=message_thread_id, show_caption_above_media=show_caption_above_media,
+                                                    allow_paid_broadcast=allow_paid_broadcast, video_start_timestamp=video_start_timestamp))
 
     async def delete_message(self, chat_id: Union[int, str], message_id: int, 
             timeout: Optional[int]=None) -> bool:
@@ -4341,7 +4353,9 @@ class AsyncTeleBot:
             business_connection_id: Optional[str]=None,
             message_effect_id: Optional[str]=None,
             show_caption_above_media: Optional[bool]=None,
-            allow_paid_broadcast: Optional[bool]=None) -> types.Message:
+            allow_paid_broadcast: Optional[bool]=None,
+            cover: Optional[Union[Any, str]]=None,
+            start_timestamp: Optional[int]=None) -> types.Message:
         """
         Use this method to send video files, Telegram clients support mp4 videos (other formats may be sent as Document).
         
@@ -4364,6 +4378,14 @@ class AsyncTeleBot:
 
         :param thumbnail: Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side. The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail's width and height should not exceed 320. Ignored if the file is not uploaded using multipart/form-data. Thumbnails can't be reused and can be only uploaded as a new file, so you can pass “attach://<file_attach_name>” if the thumbnail was uploaded using multipart/form-data under <file_attach_name>.
         :type thumbnail: :obj:`str` or :class:`telebot.types.InputFile`
+
+        :param cover: Cover for the video in the message. Pass a file_id to send a file that exists on the Telegram servers (recommended),
+            pass an HTTP URL for Telegram to get a file from the Internet, or pass “attach://<file_attach_name>” to upload a new one using multipart/form-data under
+            <file_attach_name> name. More information on Sending Files »
+        :type cover: :obj:`str` or :class:`telebot.types.InputFile`
+
+        :param start_timestamp: Start timestamp for the video in the message
+        :type start_timestamp: :obj:`int`
         
         :param caption: Video caption (may also be used when resending videos by file_id), 0-1024 characters after entities parsing
         :type caption: :obj:`str`
@@ -4467,7 +4489,7 @@ class AsyncTeleBot:
                 self.token, chat_id, video, duration, caption, reply_markup,
                 parse_mode, supports_streaming, disable_notification, timeout, thumbnail, width, height,
                 caption_entities, protect_content, message_thread_id, has_spoiler, reply_parameters, business_connection_id, message_effect_id=message_effect_id,
-                show_caption_above_media=show_caption_above_media, allow_paid_broadcast=allow_paid_broadcast))
+                show_caption_above_media=show_caption_above_media, allow_paid_broadcast=allow_paid_broadcast, cover=cover, start_timestamp=start_timestamp))
 
     async def send_animation(
             self, chat_id: Union[int, str], animation: Union[Any, str], 
@@ -7707,18 +7729,23 @@ class AsyncTeleBot:
 
         return await asyncio_helper.delete_sticker_set(self.token, name)
 
-    async def send_gift(self, user_id: int, gift_id: str, text: Optional[str]=None, text_parse_mode: Optional[str]=None,
-                        text_entities: Optional[List[types.MessageEntity]]=None, pay_for_upgrade: Optional[bool]=None) -> bool:
+    async def send_gift(self, user_id: Optional[Union[str, int]] = None, gift_id: str=None,
+                        text: Optional[str]=None, text_parse_mode: Optional[str]=None, text_entities: Optional[List[types.MessageEntity]]=None,
+                        pay_for_upgrade: Optional[bool]=None, chat_id: Optional[Union[str, int]] = None) -> bool:
         """
         Sends a gift to the given user. The gift can't be converted to Telegram Stars by the user. Returns True on success.
 
         Telegram documentation: https://core.telegram.org/bots/api#sendgift
 
-        :param user_id: Unique identifier of the target user that will receive the gift
-        :type user_id: :obj:`int`
-
         :param gift_id: Identifier of the gift
         :type gift_id: :obj:`str`
+
+        :param user_id: Required if chat_id is not specified. Unique identifier of the target user who will receive the gift.
+        :type user_id::obj:`int` | :obj:`str`
+
+        :param chat_id: Required if user_id is not specified. Unique identifier for the chat or username of the channel
+            (in the format @channelusername) that will receive the gift.
+        :type chat_id: :obj:`int` | :obj:`str`
 
         :param pay_for_upgrade: Pass True to pay for the gift upgrade from the bot's balance, thereby making the upgrade free for the receiver
         :type pay_for_upgrade: :obj:`bool`
@@ -7735,7 +7762,14 @@ class AsyncTeleBot:
         :return: Returns True on success.
         :rtype: :obj:`bool`
         """
-        return await asyncio_helper.send_gift(self.token, user_id, gift_id, text, text_parse_mode, text_entities, pay_for_upgrade=pay_for_upgrade)
+        if user_id is None and chat_id is None:
+            raise ValueError("Either user_id or chat_id must be specified.")
+        
+        if gift_id is None:
+            raise ValueError("gift_id must be specified.")
+        
+        return await asyncio_helper.send_gift(self.token, gift_id, text, text_parse_mode, text_entities, pay_for_upgrade=pay_for_upgrade,
+                                                chat_id=chat_id, user_id=user_id)
     
     async def verify_user(self, user_id: int, custom_description: Optional[str]=None) -> bool:
         """
@@ -7787,7 +7821,7 @@ class AsyncTeleBot:
         """
         return await asyncio_helper.remove_user_verification(self.token, user_id)
 
-    async def remove_chat_verification(self, chat_id: Union[int, str]) -> bool:
+    async def remove_chat_verification(self, chat_id: int) -> bool:
         """
         Removes verification from a chat that is currently verified on behalf of the organization represented by the bot. Returns True on success.
 
@@ -7801,6 +7835,490 @@ class AsyncTeleBot:
         """
         return await asyncio_helper.remove_chat_verification(self.token, chat_id)
     
+    async def read_business_message(self, business_connection_id: str, chat_id: Union[int, str], message_id: int) -> bool:
+        """
+        Marks incoming message as read on behalf of a business account. Requires the can_read_messages business bot right. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#readbusinessmessage
+
+        :param business_connection_id: Unique identifier of the business connection on behalf of which to read the message
+        :type business_connection_id: :obj:`str`
+
+        :param chat_id: Unique identifier of the chat in which the message was received. The chat must have been active in the last 24 hours.
+        :type chat_id: :obj:`int` | :obj:`str`
+
+        :param message_id: Unique identifier of the message to mark as read
+        :type message_id: :obj:`int`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.read_business_message(self.token, business_connection_id, chat_id, message_id)
+
+    async def delete_business_messages(self, business_connection_id: str, message_ids: List[int]) -> bool:
+        """
+        Delete messages on behalf of a business account. Requires the can_delete_outgoing_messages business bot right to delete messages sent by the bot itself, or the can_delete_all_messages business bot right to delete any message. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#deletebusinessmessages
+
+        :param business_connection_id: Unique identifier of the business connection on behalf of which to delete the messages
+        :type business_connection_id: :obj:`str`
+
+        :param message_ids: A JSON-serialized list of 1-100 identifiers of messages to delete. All messages must be from the same chat. See deleteMessage for limitations on which messages can be deleted
+        :type message_ids: :obj:`list` of :obj:`int`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.delete_business_messages(self.token, business_connection_id, message_ids)
+
+    async def set_business_account_name(self, business_connection_id: str, first_name: str, last_name: Optional[str]=None) -> bool:
+        """
+        Changes the first and last name of a managed business account. Requires the can_change_name business bot right. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#setbusinessaccountname
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param first_name: The new value of the first name for the business account; 1-64 characters
+        :type first_name: :obj:`str`
+
+        :param last_name: The new value of the last name for the business account; 0-64 characters
+        :type last_name: :obj:`str`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.set_business_account_name(self.token, business_connection_id, first_name, last_name=last_name)
+
+    async def set_business_account_username(self, business_connection_id: str, username: Optional[str]=None) -> bool:
+        """
+        Changes the username of a managed business account. Requires the can_change_username business bot right. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#setbusinessaccountusername
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param username: The new value of the username for the business account; 0-32 characters
+        :type username: :obj:`str`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+
+        """
+        return await asyncio_helper.set_business_account_username(self.token, business_connection_id, username=username)
+
+    async def set_business_account_bio(self, business_connection_id: str, bio: Optional[str]=None) -> bool:
+        """
+        Changes the bio of a managed business account. Requires the can_change_bio business bot right. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#setbusinessaccountbio
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param bio: The new value of the bio for the business account; 0-140 characters
+        :type bio: :obj:`str`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.set_business_account_bio(self.token, business_connection_id, bio=bio)
+    
+    async def set_business_account_gift_settings(
+            self, business_connection_id: str, show_gift_button: bool, accepted_gift_types: types.AcceptedGiftTypes) -> bool:
+        """
+        Changes the privacy settings pertaining to incoming gifts in a managed business account. Requires the can_change_gift_settings business bot right. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#setbusinessaccountgiftsettings
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param show_gift_button: Pass True, if a button for sending a gift to the user or by the business account must always be shown in the input field
+        :type show_gift_button: :obj:`bool`
+
+        :param accepted_gift_types: Types of gifts accepted by the business account
+        :type accepted_gift_types: :class:`telebot.types.AcceptedGiftTypes`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.set_business_account_gift_settings(self.token, business_connection_id, show_gift_button, accepted_gift_types)
+    
+    async def get_business_account_star_balance(self, business_connection_id: str) -> types.StarAmount:
+        """
+        Returns the amount of Telegram Stars owned by a managed business account. Requires the can_view_gifts_and_stars business bot right. Returns StarAmount on success.
+        
+        Telegram documentation: https://core.telegram.org/bots/api#getbusinessaccountstarbalance
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :return: On success, a StarAmount object is returned.
+        :rtype: :class:`telebot.types.StarAmount`
+        """
+        return types.StarAmount.de_json(
+            await asyncio_helper.get_business_account_star_balance(self.token, business_connection_id)
+        )
+    
+    async def transfer_business_account_stars(self, business_connection_id: str, star_count: int) -> bool:
+        """
+        Transfers Telegram Stars from the business account balance to the bot's balance. Requires the can_transfer_stars business bot right. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#transferbusinessaccountstars
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param star_count: Number of Telegram Stars to transfer; 1-10000
+        :type star_count: :obj:`int`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.transfer_business_account_stars(self.token, business_connection_id, star_count)
+    
+    async def get_business_account_gifts(
+            self, business_connection_id: str,
+            exclude_unsaved: Optional[bool]=None,
+            exclude_saved: Optional[bool]=None,
+            exclude_unlimited: Optional[bool]=None,
+            exclude_limited: Optional[bool]=None,
+            exclude_unique: Optional[bool]=None,
+            sort_by_price: Optional[bool]=None,
+            offset: Optional[str]=None,
+            limit: Optional[int]=None) -> types.OwnedGifts:
+        """
+        Returns the gifts received and owned by a managed business account. Requires the can_view_gifts_and_stars business bot right. Returns OwnedGifts on success.
+        
+        Telegram documentation: https://core.telegram.org/bots/api#getbusinessaccountgifts
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param exclude_unsaved: Pass True to exclude gifts that aren't saved to the account's profile page
+        :type exclude_unsaved: :obj:`bool`
+
+        :param exclude_saved: Pass True to exclude gifts that are saved to the account's profile page
+        :type exclude_saved: :obj:`bool`
+
+        :param exclude_unlimited: Pass True to exclude gifts that can be purchased an unlimited number of times
+        :type exclude_unlimited: :obj:`bool`
+
+        :param exclude_limited: Pass True to exclude gifts that can be purchased a limited number of times
+        :type exclude_limited: :obj:`bool`
+
+        :param exclude_unique: Pass True to exclude unique gifts
+        :type exclude_unique: :obj:`bool`
+
+        :param sort_by_price: Pass True to sort results by gift price instead of send date. Sorting is applied before pagination.
+        :type sort_by_price: :obj:`bool`
+
+        :param offset: Offset of the first entry to return as received from the previous request; use empty string to get the first chunk of results
+        :type offset: :obj:`str`
+
+        :param limit: The maximum number of gifts to be returned; 1-100. Defaults to 100
+        :type limit: :obj:`int`
+
+        :return: On success, a OwnedGifts object is returned.
+        :rtype: :class:`telebot.types.OwnedGifts`
+        """
+        return types.OwnedGifts.de_json(
+            await asyncio_helper.get_business_account_gifts(
+                self.token, business_connection_id,
+                exclude_unsaved=exclude_unsaved,
+                exclude_saved=exclude_saved,
+                exclude_unlimited=exclude_unlimited,
+                exclude_limited=exclude_limited,
+                exclude_unique=exclude_unique,
+                sort_by_price=sort_by_price,
+                offset=offset,
+                limit=limit
+            )
+        )
+    
+    async def convert_gift_to_stars(self, business_connection_id: str, owned_gift_id: str) -> bool:
+        """
+        Converts a given regular gift to Telegram Stars. Requires the can_convert_gifts_to_stars business bot right. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#convertgifttostars
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param owned_gift_id: Unique identifier of the regular gift that should be converted to Telegram Stars
+        :type owned_gift_id: :obj:`str`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.convert_gift_to_stars(self.token, business_connection_id, owned_gift_id)
+    
+    async def upgrade_gift(
+            self, business_connection_id: str, owned_gift_id: str,
+            keep_original_details: Optional[bool]=None,
+            star_count: Optional[int]=None) -> bool:
+        """
+        Upgrades a given regular gift to a unique gift. Requires the can_transfer_and_upgrade_gifts business bot right.
+        Additionally requires the can_transfer_stars business bot right if the upgrade is paid. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#upgradegift
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param owned_gift_id: Unique identifier of the regular gift that should be upgraded to a unique one
+        :type owned_gift_id: :obj:`str`
+
+        :param keep_original_details: Pass True to keep the original gift text, sender and receiver in the upgraded gift
+        :type keep_original_details: :obj:`bool`
+
+        :param star_count: The amount of Telegram Stars that will be paid for the upgrade from the business account balance.
+            If gift.prepaid_upgrade_star_count > 0, then pass 0, otherwise, the can_transfer_stars business bot right is required and gift.upgrade_star_count must be passed.
+        :type star_count: :obj:`int`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.upgrade_gift(
+            self.token, business_connection_id, owned_gift_id,
+            keep_original_details=keep_original_details,
+            star_count=star_count
+        )
+
+    async def transfer_gift(
+            self, business_connection_id: str, owned_gift_id: str,
+            new_owner_chat_id: int,
+            star_count: Optional[int]=None) -> bool:
+        """
+        Transfers an owned unique gift to another user. Requires the can_transfer_and_upgrade_gifts business bot right.
+        Requires can_transfer_stars business bot right if the transfer is paid. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#transfergift
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param owned_gift_id: Unique identifier of the regular gift that should be transferred
+        :type owned_gift_id: :obj:`str`
+
+        :param new_owner_chat_id: Unique identifier of the chat which will own the gift. The chat must be active in the last 24 hours.
+        :type new_owner_chat_id: :obj:`int`
+
+        :param star_count: The amount of Telegram Stars that will be paid for the transfer from the business account balance.
+            If positive, then the can_transfer_stars business bot right is required.
+        :type star_count: :obj:`int`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.transfer_gift(
+            self.token, business_connection_id, owned_gift_id,
+            new_owner_chat_id,
+            star_count=star_count
+        )
+    
+    async def post_story(
+            self, business_connection_id: str, content: types.InputStoryContent,
+            active_period: int, caption: Optional[str]=None,
+            parse_mode: Optional[str]=None,
+            caption_entities: Optional[List[types.MessageEntity]]=None,
+            areas: Optional[List[types.StoryArea]]=None,
+            post_to_chat_page: Optional[bool]=None,
+            protect_content: Optional[bool]=None) -> types.Story:
+
+        """
+        Posts a story on behalf of a managed business account. Requires the can_manage_stories business bot right. Returns Story on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#poststory
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param content: Content of the story
+        :type content: :class:`telebot.types.InputStoryContent`
+
+        :param active_period: Period after which the story is moved to the archive, in seconds; must be one of 6 * 3600, 12 * 3600, 86400, or 2 * 86400
+        :type active_period: :obj:`int`
+
+        :param caption: Caption of the story, 0-2048 characters after entities parsing
+        :type caption: :obj:`str`
+
+        :param parse_mode: Mode for parsing entities in the story caption. See formatting options for more details.
+        :type parse_mode: :obj:`str`
+
+        :param caption_entities: A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode
+        :type caption_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
+
+        :param areas: A JSON-serialized list of clickable areas to be shown on the story
+        :type areas: :obj:`list` of :class:`telebot.types.StoryArea`
+
+        :param post_to_chat_page: Pass True to keep the story accessible after it expires
+        :type post_to_chat_page: :obj:`bool`
+
+        :param protect_content: Pass True if the content of the story must be protected from forwarding and screenshotting
+        :type protect_content: :obj:`bool`
+
+        :return: On success, a Story object is returned.
+        :rtype: :class:`telebot.types.Story`
+        """
+        return types.Story.de_json(
+            await asyncio_helper.post_story(
+                self.token, business_connection_id, content,
+                active_period, caption=caption,
+                parse_mode=parse_mode,
+                caption_entities=caption_entities,
+                areas=areas,
+                post_to_chat_page=post_to_chat_page,
+                protect_content=protect_content
+            )
+        )
+
+    async def edit_story(
+            self, business_connection_id: str, story_id: int,
+            content: types.InputStoryContent,
+            caption: Optional[str]=None,
+            parse_mode: Optional[str]=None,
+            caption_entities: Optional[List[types.MessageEntity]]=None,
+            areas: Optional[List[types.StoryArea]]=None) -> types.Story:
+        """
+        Edits a story previously posted by the bot on behalf of a managed business account. Requires the can_manage_stories business bot right. Returns Story on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#editstory
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param story_id: Unique identifier of the story to edit
+        :type story_id: :obj:`int`
+
+        :param content: Content of the story
+        :type content: :class:`telebot.types.InputStoryContent`
+
+        :param caption: Caption of the story, 0-2048 characters after entities parsing
+        :type caption: :obj:`str`
+
+        :param parse_mode: Mode for parsing entities in the story caption. See formatting options for more details.
+        :type parse_mode: :obj:`str`
+
+        :param caption_entities: A JSON-serialized list of special entities that appear in the caption, which can be specified instead of parse_mode
+        :type caption_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
+
+        :param areas: A JSON-serialized list of clickable areas to be shown on the story
+        :type areas: :obj:`list` of :class:`telebot.types.StoryArea`
+
+        :return: On success, a Story object is returned.
+        :rtype: :class:`telebot.types.Story`
+
+        """
+        return types.Story.de_json(
+            await asyncio_helper.edit_story(
+                self.token, business_connection_id, story_id,
+                content, caption=caption,
+                parse_mode=parse_mode,
+                caption_entities=caption_entities,
+                areas=areas
+            )
+    )
+
+    async def delete_story(self, business_connection_id: str, story_id: int) -> bool:
+        """
+        Deletes a story previously posted by the bot on behalf of a managed business account. Requires the can_manage_stories business bot right. Returns True on success.
+        
+        Telegram documentation: https://core.telegram.org/bots/api#deletestory
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param story_id: Unique identifier of the story to delete
+        :type story_id: :obj:`int`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.delete_story(self.token, business_connection_id, story_id)
+    
+    async def set_business_account_profile_photo(
+            self, business_connection_id: str, photo: types.InputProfilePhoto,
+            is_public: Optional[bool]=None) -> bool:
+        """
+        Changes the profile photo of a managed business account. Requires the can_edit_profile_photo business bot right. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#setbusinessaccountprofilephoto
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param photo: The new profile photo to set
+        :type photo: :class:`telebot.types.InputProfilePhoto`
+
+        :param is_public: Pass True to set the public photo, which will be visible even if the main photo is hidden by the business account's privacy settings. An account can have only one public photo.
+        :type is_public: :obj:`bool`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.set_business_account_profile_photo(self.token, business_connection_id, photo, is_public=is_public)
+
+
+    async def remove_business_account_profile_photo(
+            self, business_connection_id: str,
+            is_public: Optional[bool]=None) -> bool:
+        """
+        Removes the current profile photo of a managed business account. Requires the can_edit_profile_photo business bot right. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#removebusinessaccountprofilephoto
+
+        :param business_connection_id: Unique identifier of the business connection
+        :type business_connection_id: :obj:`str`
+
+        :param is_public: Pass True to remove the public photo, which is visible even if the main photo is hidden by the business account's privacy settings. After the main photo is removed, the previous profile photo (if present) becomes the main photo.
+        :type is_public: :obj:`bool`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.remove_business_account_profile_photo(self.token, business_connection_id, is_public=is_public)
+    
+    async def gift_premium_subscription(
+            self, user_id: int, month_count: int, star_count: int,
+            text: Optional[str]=None, text_parse_mode: Optional[str]=None,
+            text_entities: Optional[List[types.MessageEntity]]=None) -> bool:
+        """
+        Gifts a Telegram Premium subscription to the given user. Returns True on success.
+
+        Telegram documentation: https://core.telegram.org/bots/api#giftpremiumsubscription
+
+        :param user_id: Unique identifier of the target user who will receive a Telegram Premium subscription
+        :type user_id: :obj:`int`
+
+        :param month_count: Number of months the Telegram Premium subscription will be active for the user; must be one of 3, 6, or 12
+        :type month_count: :obj:`int`
+
+        :param star_count: Number of Telegram Stars to pay for the Telegram Premium subscription; must be 1000 for 3 months, 1500 for 6 months, and 2500 for 12 months
+        :type star_count: :obj:`int`
+
+        :param text: Text that will be shown along with the service message about the subscription; 0-128 characters
+        :type text: :obj:`str`
+
+        :param text_parse_mode: Mode for parsing entities in the text. See formatting options for more details. Entities other than “bold”, “italic”, “underline”, “strikethrough”, “spoiler”, and “custom_emoji” are ignored.
+        :type text_parse_mode: :obj:`str`
+
+        :param text_entities: A JSON-serialized list of special entities that appear in the gift text. It can be specified instead of text_parse_mode. Entities other than “bold”, “italic”, “underline”, “strikethrough”, “spoiler”, and “custom_emoji” are ignored.
+        :type text_entities: :obj:`list` of :class:`telebot.types.MessageEntity`
+
+        :return: Returns True on success.
+        :rtype: :obj:`bool`
+        """
+        return await asyncio_helper.gift_premium_subscription(
+            self.token, user_id, month_count, star_count,
+            text=text, text_parse_mode=text_parse_mode,
+            text_entities=text_entities
+        )
+
     async def get_available_gifts(self) -> types.Gifts:
         """
         Returns the list of gifts that can be sent by the bot to users. Requires no parameters. Returns a Gifts object.
@@ -7812,6 +8330,7 @@ class AsyncTeleBot:
         """
 
         return types.Gifts.de_json(await asyncio_helper.get_available_gifts(self.token))
+
     
     async def replace_sticker_in_set(self, user_id: int, name: str, old_sticker: str, sticker: types.InputSticker) -> bool:
         """

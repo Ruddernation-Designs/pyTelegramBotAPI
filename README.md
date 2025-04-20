@@ -10,7 +10,7 @@
 <p align="center">A simple, but extensible Python implementation for the <a href="https://core.telegram.org/bots/api">Telegram Bot API</a>.</p>
 <p align="center">Both synchronous and asynchronous.</p>
 
-## <p align="center">Supported Bot API version: <a href="https://core.telegram.org/bots/api#january-1-2025"><img src="https://img.shields.io/badge/Bot%20API-8.2-blue?logo=telegram" alt="Supported Bot API version"></a>
+## <p align="center">Supported Bot API version: <a href="https://core.telegram.org/bots/api#april-11-2025"><img src="https://img.shields.io/badge/Bot%20API-9.0-blue?logo=telegram" alt="Supported Bot API version"></a>
 
 <h2><a href='https://pytba.readthedocs.io/en/latest/index.html'>Official documentation</a></h2>
 <h2><a href='https://pytba.readthedocs.io/ru/latest/index.html'>Official ru documentation</a></h2>
@@ -891,5 +891,6 @@ Here are some examples of template:
 * [4K YouTube Downloader](https://github.com/hansanaD/TelegramYTDLBot/) - Youtube Downloader with upto 4K resolution support. 
 * [DrinkGenius-Bot](https://t.me/cocktail_recommendation_bot) ([source](https://github.com/Povladarchik/DrinkGenius-Bot)) by [Povladarchik](https://github.com/Povladarchik). Your personal assistant in the world of cocktails.
 * [Pytgpt-Bot](https://t.me/pytgpt_bot) ([source](https://github.com/Simatwa/pytgpt-bot)) by [Smartwa](https://github.com/Simatwa). AI powered bot for chatting, text-to-image and text-to-speech conversions.
+* [BetterForward](https://github.com/SideCloudGroup/BetterForward) by [SideCloud](https://github.com/SideCloudGroup). Probably the most reliable Message Forwarding Bot in Telegram via the Topic feature.
 
 **Want to have your bot listed here? Just make a pull request. Only bots with public source code are accepted.**
